@@ -1,0 +1,75 @@
+// lib/app_modules.dart
+library app_modules;
+
+import 'dart:async';
+import 'dart:collection';
+import 'dart:io';
+import 'dart:math' as math; // for random encouraging messages
+import 'dart:ui' show FontFeature, ImageFilter;
+
+import 'package:animations/animations.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:confetti/confetti.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart' show Ticker;
+import 'package:flutter/services.dart';
+import 'package:pdf/pdf.dart' as pdf;
+import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import 'core/theme/app_theme.dart';
+import 'core/routing/app_routes.dart';
+import 'core/utils/date_formats.dart';
+import 'data/models/models.dart';
+import 'features/games/view/mini_games_page.dart';
+import 'features/home/view/home_page.dart';
+import 'features/notifications/view/notification_center_page.dart';
+import 'features/my_ai/ai_care_bus.dart';
+import 'features/my_ai/ai_care_facade.dart';
+import 'features/my_ai/controller/ai_co_consult_service.dart';
+import 'features/my_ai/deeplink/chat_deeplink.dart';
+import 'features/my_ai/deeplink/chat_focus.dart';
+import 'features/my_ai/models/risk_models.dart';
+import 'features/my_ai/planner_service.dart';
+import 'features/my_ai/report_generator_bridge.dart';
+import 'features/my_ai/services/consultation_notes_source.dart';
+import 'features/my_ai/services/risk_report_exporter.dart';
+import 'features/my_ai/services/risk_scanner.dart';
+import 'features/my_ai/pages/report_generator_page.dart';
+import 'features/my_ai/pages/ai_consent_page.dart';
+import 'features/my_ai/pages/doctor_review_page.dart';
+import 'features/my_ai/widgets/ai_design_tokens.dart';
+import 'features/my_ai/widgets/ai_generate_report_button.dart';
+import 'features/onboarding/onboarding_page.dart';
+import 'features/risk_alert/risk_alert_intro.dart';
+import 'features/interpret/view/interpret_page.dart';
+import 'features/voice_chat/voice_chat_page.dart';
+import 'features/ask_ai_doctor/chat_screen.dart';
+import 'shared/app_settings.dart';
+import 'shared/utils/toast.dart';
+import 'shared/widgets/glass.dart';
+import 'direct_chat_page.dart';
+import 'chat_settings_page.dart';
+
+part 'app_modules/fade_dialog.dart';
+part 'app_modules/root_shell.dart';
+part 'app_modules/goals_page.dart';
+part 'app_modules/rx_suggestions_page.dart';
+part 'app_modules/feelings_page.dart';
+part 'app_modules/trends_page.dart';
+part 'app_modules/me_page.dart';
+part 'app_modules/substance_use_page.dart';
+part 'app_modules/calendar_pages.dart';
+part 'app_modules/more_settings_page.dart';
+part 'app_modules/education_community_page.dart';
+part 'app_modules/care_team_messages_page.dart';
+part 'app_modules/meditation_mode_page.dart';
+part 'app_modules/edit_profile_page.dart';
+part 'app_modules/helpers.dart';
+part 'app_modules/emergency_assist_page.dart';
+part 'app_modules/chat_home_page.dart';
+part 'app_modules/my_ai_page.dart';
