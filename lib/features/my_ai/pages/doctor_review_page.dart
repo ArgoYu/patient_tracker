@@ -41,18 +41,18 @@ class _DoctorReviewPageState extends State<DoctorReviewPage> {
 
   Future<void> _handleConfirm() async {
     if (!_reviewConfirmed) {
-      _showMessage('请勾选确认框后再继续。');
+      _showMessage('Please check the confirmation box before continuing.');
       return;
     }
     if (_signatureController.isEmpty) {
-      _showMessage('签名区域不能为空。');
+      _showMessage('Signature area cannot be empty.');
       return;
     }
     setState(() => _submitting = true);
     try {
       final Uint8List? signatureBytes = await _signatureController.toPngBytes();
       if (signatureBytes == null || signatureBytes.isEmpty) {
-        _showMessage('签名导出失败，请重试。');
+        _showMessage('Failed to export signature. Please try again.');
         return;
       }
       final approvedOutcome = _coordinator.markDoctorReviewed(
@@ -61,7 +61,7 @@ class _DoctorReviewPageState extends State<DoctorReviewPage> {
         timestamp: DateTime.now(),
       );
       if (approvedOutcome == null) {
-        _showMessage('未找到待审核报告。');
+        _showMessage('No pending report found.');
         return;
       }
       if (!mounted) return;
@@ -81,7 +81,7 @@ class _DoctorReviewPageState extends State<DoctorReviewPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final summaryText = _outcome?.summary ?? '报告尚未生成，请稍候。';
+    final summaryText = _outcome?.summary ?? 'Summary not yet generated, please wait.';
     return Scaffold(
       appBar: AppBar(
         title: const Text('Doctor Review Page'),
@@ -189,7 +189,7 @@ class _DoctorReviewPageState extends State<DoctorReviewPage> {
                       width: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('确认签字并发布报告 (Confirm & Publish Report)'),
+                  : const Text('Confirm & Publish Report'),
             ),
           ],
         ),

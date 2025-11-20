@@ -960,20 +960,16 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
         if (hasPatientAccess) {
           cards.add(const SizedBox(height: 12));
           cards.add(
-            _AutoProcessActionsCard(
-              states: Map<_AutoProcess, _AutoProcessState>.unmodifiable(
-                _autoProcessStates,
-              ),
-              exporting: _exportingPdf,
-              onViewSummary: () => _openSummarySheet(_SummaryFocus.overview),
-              onViewTimeline: () => _openSummarySheet(_SummaryFocus.timeline),
-              onViewTranscript: () =>
-                  _openSummarySheet(_SummaryFocus.transcript),
-              onViewConsent: () => _openSummarySheet(_SummaryFocus.consent),
-              onViewMetadata: () => _openSummarySheet(_SummaryFocus.metadata),
-              onViewAll: () => _openSummarySheet(_SummaryFocus.all),
-              onOpenPatientQuestions: followUps.isEmpty
-                  ? null
+              _AutoProcessActionsCard(
+                states: Map<_AutoProcess, _AutoProcessState>.unmodifiable(
+                  _autoProcessStates,
+                ),
+                exporting: _exportingPdf,
+                onViewSummary: () => _openSummarySheet(_SummaryFocus.overview),
+                onViewTimeline: () => _openSummarySheet(_SummaryFocus.timeline),
+                onViewAll: () => _openSummarySheet(_SummaryFocus.all),
+                onOpenPatientQuestions: followUps.isEmpty
+                    ? null
                   : () => _openPatientQuestionsSheet(followUps),
               onExportPdf: () => _exportPdf(outcome),
             ),
@@ -994,7 +990,7 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
                         ),
                       );
                       if (approved == true) {
-                        _showToast('报告已签字并可向患者展示。');
+                        _showToast('Report signed and ready to share with the patient.');
                       }
                     }
                   : null,
@@ -1864,9 +1860,6 @@ class _AutoProcessActionsCard extends StatelessWidget {
     required this.onViewSummary,
     required this.onViewTimeline,
     required this.onOpenPatientQuestions,
-    required this.onViewTranscript,
-    required this.onViewConsent,
-    required this.onViewMetadata,
     required this.onViewAll,
     required this.onExportPdf,
   });
@@ -1876,9 +1869,6 @@ class _AutoProcessActionsCard extends StatelessWidget {
   final VoidCallback onViewSummary;
   final VoidCallback onViewTimeline;
   final VoidCallback? onOpenPatientQuestions;
-  final VoidCallback onViewTranscript;
-  final VoidCallback onViewConsent;
-  final VoidCallback onViewMetadata;
   final VoidCallback onViewAll;
   final Future<void> Function() onExportPdf;
 
@@ -1902,21 +1892,15 @@ class _AutoProcessActionsCard extends StatelessWidget {
     final summaryState = states[_AutoProcess.summary];
     final timelineState = states[_AutoProcess.timeline];
     final patientState = states[_AutoProcess.patientQuestions];
-    final transcriptState = states[_AutoProcess.asr];
-    final consentState = states[_AutoProcess.consent];
     final pdfState = states[_AutoProcess.pdf];
 
     final summaryHandler = _isEnabled(summaryState) ? onViewSummary : null;
     final timelineHandler = _isEnabled(timelineState) ? onViewTimeline : null;
-    final metadataHandler = _isEnabled(summaryState) ? onViewMetadata : null;
     final viewAllHandler = _isEnabled(summaryState) ? onViewAll : null;
     final patientHandler =
         _isEnabled(patientState) && onOpenPatientQuestions != null
             ? onOpenPatientQuestions
             : null;
-    final transcriptHandler =
-        _isEnabled(transcriptState) ? onViewTranscript : null;
-    final consentHandler = _isEnabled(consentState) ? onViewConsent : null;
     final exportHandler =
         (!exporting && _isEnabled(pdfState)) ? () => onExportPdf() : null;
 
@@ -1956,30 +1940,6 @@ class _AutoProcessActionsCard extends StatelessWidget {
                 icon: Icons.chat_bubble_outline,
                 state: patientState ?? _AutoProcessState.pending,
                 onPressed: patientHandler,
-              ),
-            ),
-            wrapTile(
-              _AutoProcessActionButton(
-                label: 'ASR Transcript',
-                icon: Icons.graphic_eq,
-                state: transcriptState ?? _AutoProcessState.pending,
-                onPressed: transcriptHandler,
-              ),
-            ),
-            wrapTile(
-              _AutoProcessActionButton(
-                label: 'Consent Record',
-                icon: Icons.verified_user_outlined,
-                state: consentState ?? _AutoProcessState.pending,
-                onPressed: consentHandler,
-              ),
-            ),
-            wrapTile(
-              _AutoProcessActionButton(
-                label: 'Session Metadata',
-                icon: Icons.insights_outlined,
-                state: summaryState ?? _AutoProcessState.pending,
-                onPressed: metadataHandler,
               ),
             ),
             wrapTile(
@@ -3043,11 +3003,11 @@ Based on the most recent consultation, the patient responded well to the adjuste
 
   Future<String> translateSample() async {
     await Future.delayed(const Duration(milliseconds: 500));
-    return '''
+      return '''
 Multi-language Output
 - English: "Continue the inhaler twice daily."
 - Español: "Continúa con el inhalador dos veces al día."
-- 中文: "吸入剂每天使用两次，继续保持。"
+- Chinese: "Continue using the inhaler twice daily."
 ''';
   }
 
@@ -3371,7 +3331,7 @@ class _PatientViewLockedCard extends StatelessWidget {
             ? 'This report was flagged for regeneration. Capture more context and try again.'
             : 'The report will unlock once a clinician signs off on it.';
     return Card(
-      color: Theme.of(context).colorScheme.surfaceVariant,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -3387,11 +3347,11 @@ class _PatientViewLockedCard extends StatelessWidget {
               FilledButton.icon(
                 onPressed: onReview,
                 icon: const Icon(Icons.visibility),
-                label: const Text('医生预览并签字'),
+                label: const Text('Doctor preview and sign'),
               ),
               const SizedBox(height: 6),
               Text(
-                '打开 AI  Consent 页面以审核并签署报告，然后即可向患者展示。',
+                'Open the AI Consent page to review and sign the report before sharing it with the patient.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
@@ -4404,10 +4364,10 @@ class _RiskAlertPageState extends State<RiskAlertPage> {
   }
 
   Widget _buildLoadingState(BuildContext context) {
-    return Center(
+    return const Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: const [
+        children: [
           CircularProgressIndicator(),
           SizedBox(height: 16),
           Text('Scanning latest consultation notes…'),
@@ -4735,7 +4695,7 @@ class _InfoBanner extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      color: colorScheme.surfaceVariant.withValues(alpha: 0.5),
+      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Row(

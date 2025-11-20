@@ -22,7 +22,7 @@ void main() {
       controller.start(conversationId: 'dr.chen', contactName: 'Dr. Chen');
 
       controller.recordClinicianMessage(
-        'Let’s add a 20 minute walk after dinner to your weekly plan so we can track evening energy.',
+        'Let\'s add a 20 minute walk after dinner to your weekly plan so we can track evening energy.',
       );
       controller.recordClinicianMessage(
         'Increase Sertraline to 75 mg in the morning and note any dizziness or nausea.',
@@ -60,8 +60,9 @@ void main() {
 
     test('buildGoalFromProposal creates default goal meta', () {
       const proposal = AiCoConsultGoalProposal(
-        title: '记录每日饮水量',
-        instructions: '每天记录至少 8 杯水的摄入，午餐后补充一杯。',
+        title: 'Log daily water intake',
+        instructions:
+            'Record at least 8 cups of water each day and add one cup after lunch.',
         category: GoalCategory.hydration,
         frequency: GoalFrequency.daily,
         timesPerPeriod: 8,

@@ -532,7 +532,7 @@ class _MeditationModePageState extends State<MeditationModePage> {
         Text('Preset sound', style: text.titleMedium),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-            initialValue: _selectedPreset,
+          value: _selectedPreset,
             items: _presets.keys
                 .map((k) => DropdownMenuItem(value: k, child: Text(k)))
                 .toList(),

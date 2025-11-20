@@ -166,7 +166,7 @@ class _DirectChatPageState extends State<DirectChatPage> {
 
   void _startCoConsultSession() {
     if (!_isDoctorConversation) {
-      _showActionSnack('AI Co-Consult 可在会诊对话中使用');
+      _showActionSnack('AI Co-Consult is only available in consult conversations.');
       return;
     }
     final session = _coConsultCoordinator.startSession(
@@ -175,7 +175,7 @@ class _DirectChatPageState extends State<DirectChatPage> {
       contactName: widget.contact.name,
     );
     if (session == null) {
-      _showActionSnack('AI Co-Consult 权限未开启');
+      _showActionSnack('AI Co-Consult permission is not enabled.');
       return;
     }
     for (final message in _messages) {
@@ -191,7 +191,7 @@ class _DirectChatPageState extends State<DirectChatPage> {
       _aiCoConsultEnabled = true;
       _lastOutcome = null;
     });
-    _showActionSnack('AI Co-Consult 已启用，AI 正在旁听');
+    _showActionSnack('AI Co-Consult is now enabled, and AI is listening in.');
   }
 
   Future<void> _endCoConsultSession({bool showSheet = true}) async {
@@ -203,7 +203,7 @@ class _DirectChatPageState extends State<DirectChatPage> {
     try {
       outcome = _coConsultCoordinator.completeSession();
     } catch (error) {
-      _showActionSnack('结束 AI Co-Consult 时出现问题');
+      _showActionSnack('There was a problem ending the AI Co-Consult session.');
     } finally {
       setState(() {
         _aiCoConsultEnabled = false;
@@ -217,7 +217,7 @@ class _DirectChatPageState extends State<DirectChatPage> {
     if (showSheet) {
       await _showOutcomeSheet(outcome);
     }
-    _showActionSnack('AI Co-Consult 总结已生成');
+    _showActionSnack('AI Co-Consult summary is ready.');
   }
 
   Future<void> _showOutcomeSheet(AiCoConsultOutcome outcome) {
@@ -244,14 +244,14 @@ class _DirectChatPageState extends State<DirectChatPage> {
       signatureLabel: signature,
     );
     if (signedOutcome == null) {
-      _showActionSnack('无法完成签字，请稍后再试');
+      _showActionSnack('Unable to complete the signature. Please try again later.');
       return;
     }
     if (!mounted) return;
     setState(() => _lastOutcome = signedOutcome);
     await _showPatientReportDialog(signedOutcome);
     if (!mounted) return;
-    _showActionSnack('报告已签字并可分享给患者');
+    _showActionSnack('Report has been signed and can now be shared with the patient.');
   }
 
   Future<String?> _promptDoctorSignature() async {
@@ -263,19 +263,19 @@ class _DirectChatPageState extends State<DirectChatPage> {
           builder: (dialogContext, setState) {
             final trimmed = controller.text.trim();
             return AlertDialog(
-              title: const Text('医生签字确认'),
+              title: const Text('Doctor Signature Confirmation'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    '请输入签名以确认报告无误后即可展示给患者。',
+                    'Enter your signature to confirm the report is accurate before sharing it with the patient.',
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: controller,
-                    decoration: const InputDecoration(
-                      labelText: '签名（医生姓名）',
+                      decoration: const InputDecoration(
+                        labelText: 'Signature (Doctor name)',
                       border: OutlineInputBorder(),
                     ),
                     autofocus: true,
@@ -285,16 +285,16 @@ class _DirectChatPageState extends State<DirectChatPage> {
                 ],
               ),
               actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('取消'),
-                ),
-                FilledButton(
-                  onPressed: trimmed.isNotEmpty
-                      ? () => Navigator.of(dialogContext).pop(trimmed)
-                      : null,
-                  child: const Text('确认无误'),
-                ),
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: trimmed.isNotEmpty
+                        ? () => Navigator.of(dialogContext).pop(trimmed)
+                        : null,
+                    child: const Text('Confirm'),
+                  ),
               ],
             );
           },
@@ -311,13 +311,13 @@ class _DirectChatPageState extends State<DirectChatPage> {
       builder: (dialogContext) {
         final theme = Theme.of(dialogContext);
         return AlertDialog(
-          title: const Text('患者可见报告'),
+          title: const Text('Patient-visible Report'),
           content: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '医生签字后以下内容可直接共享给患者：',
+                  'Once the doctor signs, the following can be shared directly with the patient:',
                   style: theme.textTheme.bodySmall,
                 ),
                 const SizedBox(height: 12),
@@ -328,7 +328,7 @@ class _DirectChatPageState extends State<DirectChatPage> {
                 if (outcome.planUpdates.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Text(
-                    '健康计划更新',
+                    'Health plan updates',
                     style: theme.textTheme.titleSmall,
                   ),
                   ...outcome.planUpdates.take(3).map((item) => Padding(
@@ -340,7 +340,7 @@ class _DirectChatPageState extends State<DirectChatPage> {
                 if (outcome.followUpQuestions.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Text(
-                    '可追问的问题建议',
+                    'Suggested follow-up questions',
                     style: theme.textTheme.titleSmall,
                   ),
                   ...outcome.followUpQuestions.take(3).map((item) => Padding(
@@ -355,7 +355,7 @@ class _DirectChatPageState extends State<DirectChatPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('关闭'),
+            child: const Text('Close'),
             ),
           ],
         );
@@ -600,7 +600,7 @@ class _DirectChatPageState extends State<DirectChatPage> {
                         ),
                         label: Text(
                           _aiCoConsultEnabled
-                              ? 'AI Co-Consult 开启'
+                              ? 'AI Co-Consult Enabled'
                               : 'AI Co-Consult',
                         ),
                       ),
@@ -862,13 +862,13 @@ class _CoConsultLiveBanner extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'AI Co-Consult 正在旁听',
+                  'AI Co-Consult is listening in',
                   style: theme.textTheme.bodyMedium
                       ?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'AI 会实时总结重点并同步健康计划、目标与用药。',
+                  'AI summarizes key points and syncs care plans, goals, and medications in real time.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                   ),
@@ -879,7 +879,7 @@ class _CoConsultLiveBanner extends StatelessWidget {
           const SizedBox(width: 12),
           FilledButton.tonal(
             onPressed: () => onEnd(),
-            child: const Text('结束'),
+            child: const Text('End'),
           ),
         ],
       ),
@@ -921,7 +921,7 @@ class _CoConsultOutcomePreview extends StatelessWidget {
                     color: theme.colorScheme.primary),
                 const SizedBox(width: 8),
                 Text(
-                  'AI Co-Consult 总结就绪',
+                  'AI Co-Consult summary ready',
                   style: theme.textTheme.titleSmall
                       ?.copyWith(fontWeight: FontWeight.w600),
                 ),
@@ -944,22 +944,22 @@ class _CoConsultOutcomePreview extends StatelessWidget {
                 if (outcome.planUpdates.isNotEmpty)
                   _SummaryChip(
                     icon: Icons.fact_check_outlined,
-                    label: '计划 ${outcome.planUpdates.length}',
+                    label: 'Plan updates ${outcome.planUpdates.length}',
                   ),
                 if (outcome.goalProposals.isNotEmpty)
                   _SummaryChip(
                     icon: Icons.flag_outlined,
-                    label: '目标 ${outcome.goalProposals.length}',
+                    label: 'Goals ${outcome.goalProposals.length}',
                   ),
                 if (outcome.medicationChanges.isNotEmpty)
                   _SummaryChip(
                     icon: Icons.vaccines_outlined,
-                    label: '用药 ${outcome.medicationChanges.length}',
+                    label: 'Medications ${outcome.medicationChanges.length}',
                   ),
                 if (outcome.followUpQuestions.isNotEmpty)
                   _SummaryChip(
                     icon: Icons.help_outline,
-                    label: '追问建议 ${outcome.followUpQuestions.length}',
+                    label: 'Follow-up questions ${outcome.followUpQuestions.length}',
                   ),
               ],
             ),
@@ -1033,7 +1033,7 @@ class _CoConsultSummarySheet extends StatelessWidget {
                 ),
               ),
               Text(
-                'AI Co-Consult 摘要',
+                'AI Co-Consult Summary',
                 style: theme.textTheme.titleMedium
                     ?.copyWith(fontWeight: FontWeight.w600),
               ),
@@ -1046,7 +1046,7 @@ class _CoConsultSummarySheet extends StatelessWidget {
               if (outcome.planUpdates.isNotEmpty) ...[
                 const _SummarySectionHeader(
                   icon: Icons.fact_check_outlined,
-                  label: '健康计划更新',
+                  label: 'Health plan updates',
                 ),
                 for (final item in outcome.planUpdates)
                   _SummaryBulletTile(label: item),
@@ -1055,7 +1055,7 @@ class _CoConsultSummarySheet extends StatelessWidget {
               if (outcome.goalProposals.isNotEmpty) ...[
                 const _SummarySectionHeader(
                   icon: Icons.flag_outlined,
-                  label: '新增 / 调整目标',
+                  label: 'New / adjusted goals',
                 ),
                 for (final proposal in outcome.goalProposals)
                   _SummaryGoalTile(proposal: proposal),
@@ -1064,7 +1064,7 @@ class _CoConsultSummarySheet extends StatelessWidget {
               if (outcome.medicationChanges.isNotEmpty) ...[
                 const _SummarySectionHeader(
                   icon: Icons.vaccines_outlined,
-                  label: '用药调整',
+                  label: 'Medication updates',
                 ),
                 for (final change in outcome.medicationChanges)
                   _SummaryMedicationTile(change: change),
@@ -1073,7 +1073,7 @@ class _CoConsultSummarySheet extends StatelessWidget {
               if (outcome.followUpQuestions.isNotEmpty) ...[
                 const _SummarySectionHeader(
                   icon: Icons.help_outline,
-                  label: '可追问的问题建议',
+                  label: 'Suggested follow-up questions',
                 ),
                 for (final question in outcome.followUpQuestions)
                   _SummaryBulletTile(
@@ -1090,11 +1090,11 @@ class _CoConsultSummarySheet extends StatelessWidget {
                       // Share flow already shows feedback.
                     }
                   },
-                  child: const Text('医生签字确认并分享'),
+                  child: const Text('Confirm signature and share'),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '医生签字确认无误后即可向患者展示报告。',
+                  'Once the doctor confirms the signature, the report can be shared with the patient.',
                   style: theme.textTheme.bodySmall,
                 ),
               ],
@@ -1172,8 +1172,8 @@ class _SummaryGoalTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final categoryLabel = proposal.category?.label() ?? '自定义';
-    final frequencyLabel = proposal.frequency?.label() ?? '每周';
+    final categoryLabel = proposal.category?.label() ?? 'Custom';
+    final frequencyLabel = proposal.frequency?.label() ?? 'Weekly';
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
       padding: const EdgeInsets.all(12),
@@ -1218,9 +1218,9 @@ class _SummaryMedicationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final actionLabel = switch (change.action) {
-      AiMedicationAction.add => '新增',
-      AiMedicationAction.update => '调整',
-      AiMedicationAction.discontinue => '停用',
+      AiMedicationAction.add => 'Add',
+      AiMedicationAction.update => 'Update',
+      AiMedicationAction.discontinue => 'Discontinue',
     };
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -1240,17 +1240,17 @@ class _SummaryMedicationTile extends StatelessWidget {
           if (change.dose != null) ...[
             const SizedBox(height: 4),
             Text(
-              '剂量：${change.dose}',
+              'Dose: ${change.dose}',
               style: theme.textTheme.bodySmall,
             ),
           ],
           if (change.effect != null) ...[
             const SizedBox(height: 4),
-            Text('目的：${change.effect}', style: theme.textTheme.bodySmall),
+            Text('Purpose: ${change.effect}', style: theme.textTheme.bodySmall),
           ],
           if (change.sideEffects != null) ...[
             const SizedBox(height: 4),
-            Text('注意：${change.sideEffects}', style: theme.textTheme.bodySmall),
+            Text('Notes: ${change.sideEffects}', style: theme.textTheme.bodySmall),
           ],
         ],
       ),

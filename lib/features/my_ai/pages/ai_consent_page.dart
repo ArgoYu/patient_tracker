@@ -246,7 +246,7 @@ class _AiConsentPageState extends State<AiConsentPage> {
                       setState(() => _confirmedAccuracy = value ?? false);
                     }
                   : null,
-              title: const Text('确认报告准确无误'),
+              title: const Text('Confirm the report is accurate'),
               controlAffinity: ListTileControlAffinity.leading,
               contentPadding: EdgeInsets.zero,
             ),
@@ -305,7 +305,7 @@ class _AiConsentPageState extends State<AiConsentPage> {
   Widget _buildApprovedStamp(AiCoConsultOutcome outcome) {
     final label = _approvedByLabel(outcome);
     return Card(
-      color: Theme.of(context).colorScheme.surfaceVariant,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Text(

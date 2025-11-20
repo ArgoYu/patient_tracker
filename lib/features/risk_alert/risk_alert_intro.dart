@@ -47,26 +47,26 @@ class _RiskIntroFlowState extends State<_RiskIntroFlow> {
   bool _dontShowAgain = false;
 
   List<_IntroPage> get _pages => [
-        _IntroPage(
+        const _IntroPage(
           title: _tTitle1,
           body: _tBody1,
-          gradient: const [Color(0xFFEEF6FF), Color(0xFFF7FAFF)],
-          hero: const Icon(
+          gradient: [Color(0xFFEEF6FF), Color(0xFFF7FAFF)],
+          hero: Icon(
             Icons.health_and_safety,
             size: 80,
             key: ValueKey('hero_health'),
           ),
         ),
-        _IntroPage(
+        const _IntroPage(
           title: _tTitle2,
           body: _tBody2,
-          gradient: const [Color(0xFFF4FFF7), Color(0xFFF9FFFB)],
-          hero: const Icon(
+          gradient: [Color(0xFFF4FFF7), Color(0xFFF9FFFB)],
+          hero: Icon(
             Icons.rule,
             size: 80,
             key: ValueKey('hero_rule'),
           ),
-          bodyChild: const _RulePreviewCard(),
+          bodyChild: _RulePreviewCard(),
         ),
         _IntroPage(
           title: _tTitle3,
@@ -350,13 +350,13 @@ class _RulePreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(top: 8),
+    return const Card(
+      margin: EdgeInsets.only(top: 8),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
+          children: [
             Text('Example rules'),
             SizedBox(height: 8),
             _RuleRow(

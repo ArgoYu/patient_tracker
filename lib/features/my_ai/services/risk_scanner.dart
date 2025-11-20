@@ -66,7 +66,7 @@ class _RiskRule {
     final hits = <String>[];
     RiskLevel? matchedLevel;
 
-    bool _matchAny(List<String> keywords, RiskLevel level) {
+    bool matchAny(List<String> keywords, RiskLevel level) {
       final localHits = keywords
           .where((keyword) => normalizedNotes.contains(keyword))
           .toList();
@@ -76,7 +76,7 @@ class _RiskRule {
       return true;
     }
 
-    if (_matchAny(high, RiskLevel.high)) {
+    if (matchAny(high, RiskLevel.high)) {
       return RiskItem(
         category: category,
         level: RiskLevel.high,
@@ -84,7 +84,7 @@ class _RiskRule {
         suggestion: suggestion,
       );
     }
-    if (_matchAny(medium, RiskLevel.medium)) {
+    if (matchAny(medium, RiskLevel.medium)) {
       return RiskItem(
         category: category,
         level: RiskLevel.medium,
@@ -92,7 +92,7 @@ class _RiskRule {
         suggestion: suggestion,
       );
     }
-    if (_matchAny(low, RiskLevel.low)) {
+    if (matchAny(low, RiskLevel.low)) {
       return RiskItem(
         category: category,
         level: RiskLevel.low,
