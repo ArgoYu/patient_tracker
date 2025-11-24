@@ -15,6 +15,7 @@ import 'features/voice_chat/services/voice_ai_http_service.dart';
 import 'features/voice_chat/services/voice_ai_service.dart';
 import 'features/voice_chat/services/voice_ai_service_registry.dart';
 import 'features/voice_chat/services/voice_chat_config.dart';
+import 'shared/prefs_keys.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,14 +24,18 @@ Future<void> main() async {
 
   await Hive.initFlutter();
   final sp = await SharedPreferences.getInstance();
-  final done = sp.getBool('onboarding_completed') ?? false;
-  final version = sp.getInt('onboarding_version') ?? 0;
+  final done = sp.getBool(PrefsKeys.onboardingCompleted) ?? false;
+  final version = sp.getInt(PrefsKeys.onboardingVersion) ?? 0;
+  final authToken = sp.getString(PrefsKeys.authToken);
+  final emailVerified = sp.getBool(PrefsKeys.emailVerified) ?? false;
+  final isLoggedIn = (sp.getBool(PrefsKeys.isLoggedIn) ??
+          (authToken != null && authToken.isNotEmpty)) &&
+      emailVerified;
   final needOnboarding = !done || version < kOnboardingVersion;
-  runApp(AppRoot(
-    initialRoute: needOnboarding
-        ? OnboardingPage.routeName
-        : AppRoutes.home,
-  ));
+  final initialRoute = needOnboarding
+      ? AppRoutes.onboarding
+      : (isLoggedIn ? AppRoutes.home : AppRoutes.auth);
+  runApp(AppRoot(initialRoute: initialRoute));
 }
 
 void _configureVoiceChatService() {
@@ -52,7 +57,8 @@ void _configureVoiceChatService() {
 }
 
 void _installStrayKeyGuard() {
-  final dispatcher = WidgetsFlutterBinding.ensureInitialized().platformDispatcher;
+  final dispatcher =
+      WidgetsFlutterBinding.ensureInitialized().platformDispatcher;
   final originalOnKeyData = dispatcher.onKeyData;
   dispatcher.onKeyData = (ui.KeyData data) {
     if (_shouldSwallowKeyData(data)) {
@@ -70,8 +76,9 @@ bool _shouldSwallowKeyData(ui.KeyData data) {
     return false;
   }
   final physicalKey = PhysicalKeyboardKey(data.physical);
-  final bool isPressed = HardwareKeyboard.instance.isPhysicalKeyPressed(physicalKey);
-  final bool isCapsLockOnMac = Platform.isMacOS &&
-      data.logical == LogicalKeyboardKey.capsLock.keyId;
+  final bool isPressed =
+      HardwareKeyboard.instance.isPhysicalKeyPressed(physicalKey);
+  final bool isCapsLockOnMac =
+      Platform.isMacOS && data.logical == LogicalKeyboardKey.capsLock.keyId;
   return !isPressed || isCapsLockOnMac;
 }

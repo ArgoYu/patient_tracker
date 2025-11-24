@@ -43,9 +43,10 @@ enum _SummarySectionType {
 }
 
 class MyAiPage extends StatefulWidget {
-  const MyAiPage({super.key});
+  const MyAiPage({super.key, this.autoShowSessionControls = false});
 
   static const String routeName = '/my_ai';
+  final bool autoShowSessionControls;
 
   static final Map<String, WidgetBuilder> routes = <String, WidgetBuilder>{
     routeName: (_) => const MyAiPage(),
@@ -179,23 +180,6 @@ class _MyAiPageState extends State<MyAiPage> {
     _showMyAiSnack(context, 'Automated follow-ups skipped for now');
   }
 
-  void _openDetail(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (detailContext) => _MyAiDetailPage(
-          coordinator: _coCoordinator,
-          onStart: _handleStartListening,
-          onPause: _handlePauseListening,
-          onResume: _handleResumeListening,
-          onPermissionChanged: _handlePermissionChanged,
-          onConsentChanged: _handleConsentChanged,
-          onSendFollowUps: _handleSendFollowUps,
-          onSkipFollowUps: _handleSkipFollowUps,
-        ),
-      ),
-    );
-  }
-
   void _showMyAiSnack(BuildContext context, String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
@@ -308,208 +292,24 @@ class _MyAiPageState extends State<MyAiPage> {
   }
 
   @override
-  @override
-  @override
-  @override
-  @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _coCoordinator,
-      builder: (context, _) {
-        final coordinator = _coCoordinator;
-        return Scaffold(
-          appBar: AppBar(
-            centerTitle: false,
-            title: Text(
-              'My AI',
-              style: AiTextStyles.title16(context),
-            ),
-          ),
-          body: ListView(
-            padding: const EdgeInsets.all(AiDesignTokens.pagePadding),
-            children: [
-              _CompactCoConsultTile(
-                coordinator: coordinator,
-                onOpenDetail: () => _openDetail(context),
-                onStart: () => _handleStartListening(context),
-                onPause: () => _handlePauseListening(context),
-                onResume: () => _handleResumeListening(context),
-              ),
-              const SizedBox(height: 24),
-              const _MyAiToolsSection(),
-            ],
-          ),
-        );
-      },
+    return _MyAiDetailPage(
+      autoShowSessionControls: widget.autoShowSessionControls,
+      coordinator: _coCoordinator,
+      onStart: _handleStartListening,
+      onPause: _handlePauseListening,
+      onResume: _handleResumeListening,
+      onPermissionChanged: _handlePermissionChanged,
+      onConsentChanged: _handleConsentChanged,
+      onSendFollowUps: _handleSendFollowUps,
+      onSkipFollowUps: _handleSkipFollowUps,
     );
-  }
-}
-
-class _CompactCoConsultTile extends StatelessWidget {
-  const _CompactCoConsultTile({
-    required this.coordinator,
-    required this.onOpenDetail,
-    required this.onStart,
-    required this.onPause,
-    required this.onResume,
-  });
-
-  final AiCoConsultCoordinator coordinator;
-  final VoidCallback onOpenDetail;
-  final Future<void> Function() onStart;
-  final Future<void> Function() onPause;
-  final Future<void> Function() onResume;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final status = coordinator.status;
-    final canStart = coordinator.canStartSession;
-    final hasConsent = coordinator.hasRecordingConsent;
-
-    final timerStyle = theme.textTheme.bodyMedium?.copyWith(
-          fontSize: 18,
-          fontWeight: FontWeight.w500,
-          fontFeatures: const [FontFeature.tabularFigures()],
-          color: theme.colorScheme.onSurfaceVariant,
-        ) ??
-        TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w500,
-          fontFeatures: const [FontFeature.tabularFigures()],
-          color: theme.colorScheme.onSurfaceVariant,
-        );
-
-    return _DetailCard(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _buildControlButton(
-            context,
-            status: status,
-            canStart: canStart,
-            hasConsent: hasConsent,
-            onStart: onStart,
-            onPause: onPause,
-            onResume: onResume,
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: onOpenDetail,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'AI Co-Consult',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w700,
-                          color: theme.colorScheme.onSurface,
-                        ) ??
-                        TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w700,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  _LiveDurationText(
-                    coordinator: coordinator,
-                    style: timerStyle,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildControlButton(
-    BuildContext context, {
-    required AiCoConsultListeningStatus status,
-    required bool canStart,
-    required bool hasConsent,
-    required Future<void> Function() onStart,
-    required Future<void> Function() onPause,
-    required Future<void> Function() onResume,
-  }) {
-    final theme = Theme.of(context);
-    final icon = _recIcon(status);
-    final color = _recColor(status, canStart, hasConsent).resolveFrom(context);
-
-    Color foreground = CupertinoColors.white;
-    if (status == AiCoConsultListeningStatus.idle &&
-        !(canStart && hasConsent)) {
-      foreground = theme.colorScheme.onSurfaceVariant;
-    }
-
-    return CupertinoButton(
-      padding: EdgeInsets.zero,
-      onPressed: () {
-        switch (status) {
-          case AiCoConsultListeningStatus.listening:
-            onPause();
-            break;
-          case AiCoConsultListeningStatus.paused:
-            onResume();
-            break;
-          case AiCoConsultListeningStatus.idle:
-          case AiCoConsultListeningStatus.completed:
-            onStart();
-            break;
-        }
-      },
-      child: Container(
-        width: 62,
-        height: 62,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-        ),
-        alignment: Alignment.center,
-        child: Icon(
-          icon,
-          color: foreground,
-          size: 26,
-        ),
-      ),
-    );
-  }
-
-  IconData _recIcon(AiCoConsultListeningStatus status) {
-    switch (status) {
-      case AiCoConsultListeningStatus.listening:
-        return Icons.pause;
-      case AiCoConsultListeningStatus.paused:
-      case AiCoConsultListeningStatus.idle:
-        return Icons.fiber_manual_record;
-      case AiCoConsultListeningStatus.completed:
-        return Icons.stop;
-    }
-  }
-
-  CupertinoDynamicColor _recColor(
-      AiCoConsultListeningStatus status, bool canStart, bool hasConsent) {
-    if (status == AiCoConsultListeningStatus.listening) {
-      return CupertinoColors.systemRed;
-    }
-    if (status == AiCoConsultListeningStatus.completed) {
-      return CupertinoColors.systemRed;
-    }
-    if (status == AiCoConsultListeningStatus.idle &&
-        !(canStart && hasConsent)) {
-      return CupertinoColors.systemGrey4;
-    }
-    return CupertinoColors.systemRed;
   }
 }
 
 class _MyAiDetailPage extends StatefulWidget {
   const _MyAiDetailPage({
+    required this.autoShowSessionControls,
     required this.coordinator,
     required this.onStart,
     required this.onPause,
@@ -520,6 +320,7 @@ class _MyAiDetailPage extends StatefulWidget {
     required this.onSkipFollowUps,
   });
 
+  final bool autoShowSessionControls;
   final AiCoConsultCoordinator coordinator;
   final _ContextAction onStart;
   final _ContextAction onPause;
@@ -552,9 +353,7 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
     _lastStatus = widget.coordinator.status;
     widget.coordinator.addListener(_handleCoordinatorUpdate);
     _syncAutoProcesses();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _maybeAutoShowSessionControlsDialog();
-    });
+    _triggerAutoShowSessionControls();
   }
 
   Future<void> _handleCompleteSession() async {
@@ -705,6 +504,165 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
+  }
+
+  void _handleShareButton(AiCoConsultOutcome? outcome) {
+    if (outcome == null) {
+      _showToast('Summary is not ready yet.');
+      return;
+    }
+    if (!widget.coordinator.canPatientViewReport) {
+      _showToast('This report unlocks after a clinician approves it.');
+      return;
+    }
+    _showShareActions(outcome);
+  }
+
+  void _showShareActions(AiCoConsultOutcome outcome) {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        return SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 8),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurface.withOpacity(0.32),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    'Share report',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  leading: const Icon(Icons.save_outlined),
+                  title: const Text('Save report'),
+                  subtitle:
+                      const Text('Add this summary to the patient record.'),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    _handleSaveReport(outcome);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.chat_bubble_outline),
+                  title: const Text('Send to Chat…'),
+                  subtitle: const Text('Attach the summary to a chat thread.'),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    _openChatTargetPicker(outcome);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.picture_as_pdf_outlined),
+                  title: const Text('Export as PDF'),
+                  subtitle: const Text(
+                      'Generate the PDF copy for download or sharing.'),
+                  trailing: _exportingPdf
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.chevron_right),
+                  onTap: _exportingPdf
+                      ? null
+                      : () {
+                          Navigator.of(sheetContext).pop();
+                          _exportPdf(outcome);
+                        },
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _handleSaveReport(AiCoConsultOutcome outcome) {
+    _showToast('Summary saved to the patient record');
+  }
+
+  Future<void> _openChatTargetPicker(AiCoConsultOutcome outcome) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(sheetContext)
+                      .colorScheme
+                      .onSurface
+                      .withOpacity(0.32),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  'Send report to chat',
+                  style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              ...personalChatContacts.map(
+                (contact) => ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: contact.color.withOpacity(0.16),
+                    child: Icon(contact.icon, color: contact.color),
+                  ),
+                  title: Text(contact.name),
+                  subtitle: Text(contact.subtitle),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    _handleSendToChat(contact, outcome);
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _handleSendToChat(
+    PersonalChatContact contact,
+    AiCoConsultOutcome outcome,
+  ) {
+    _showToast('Report attached to ${contact.name} chat.');
   }
 
   String? _approvalBadgeText() {
@@ -960,18 +918,16 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
         if (hasPatientAccess) {
           cards.add(const SizedBox(height: 12));
           cards.add(
-              _AutoProcessActionsCard(
-                states: Map<_AutoProcess, _AutoProcessState>.unmodifiable(
-                  _autoProcessStates,
-                ),
-                exporting: _exportingPdf,
-                onViewSummary: () => _openSummarySheet(_SummaryFocus.overview),
-                onViewTimeline: () => _openSummarySheet(_SummaryFocus.timeline),
-                onViewAll: () => _openSummarySheet(_SummaryFocus.all),
-                onOpenPatientQuestions: followUps.isEmpty
-                    ? null
+            _AutoProcessActionsCard(
+              states: Map<_AutoProcess, _AutoProcessState>.unmodifiable(
+                _autoProcessStates,
+              ),
+              onViewSummary: () => _openSummarySheet(_SummaryFocus.overview),
+              onViewTimeline: () => _openSummarySheet(_SummaryFocus.timeline),
+              onViewAll: () => _openSummarySheet(_SummaryFocus.all),
+              onOpenPatientQuestions: followUps.isEmpty
+                  ? null
                   : () => _openPatientQuestionsSheet(followUps),
-              onExportPdf: () => _exportPdf(outcome),
             ),
           );
         } else {
@@ -981,12 +937,14 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
               status: widget.coordinator.reportStatus,
               onReview: widget.coordinator.isReportPendingReview
                   ? () async {
-                      final sessionId = widget.coordinator.pendingOutcome?.sessionId ??
-                          widget.coordinator.lastSession?.id ??
-                          'unknown';
+                      final sessionId =
+                          widget.coordinator.pendingOutcome?.sessionId ??
+                              widget.coordinator.lastSession?.id ??
+                              'unknown';
                       final approved = await Navigator.of(context).push<bool>(
                         MaterialPageRoute<bool>(
-                          builder: (_) => DoctorReviewPage(sessionId: sessionId),
+                          builder: (_) =>
+                              DoctorReviewPage(sessionId: sessionId),
                         ),
                       );
                       if (approved == true) {
@@ -1009,6 +967,18 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
               'AI Co-Consult',
               style: AiTextStyles.title16(context),
             ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.verified_user_outlined),
+                tooltip: 'Consent & permissions',
+                onPressed: () => _showSessionControlsDialog(),
+              ),
+              IconButton(
+                icon: const Icon(Icons.share_outlined),
+                tooltip: 'Share report',
+                onPressed: () => _handleShareButton(outcome),
+              ),
+            ],
           ),
           body: Stack(
             children: [
@@ -1062,10 +1032,24 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
   void _maybeAutoShowSessionControlsDialog() {
     if (!mounted ||
         _sessionControlsDialogShownAutomatically ||
-        widget.coordinator.hasRecordingConsent) {
+        _sessionControlsDialogOpen) {
       return;
     }
     _showSessionControlsDialog(autoTriggered: true);
+  }
+
+  void _triggerAutoShowSessionControls() {
+    if (!widget.autoShowSessionControls) return;
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _maybeAutoShowSessionControlsDialog());
+  }
+
+  @override
+  void didUpdateWidget(covariant _MyAiDetailPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.autoShowSessionControls && !oldWidget.autoShowSessionControls) {
+      _triggerAutoShowSessionControls();
+    }
   }
 }
 
@@ -1647,7 +1631,8 @@ class _ConsultSummaryBody extends StatelessWidget {
     TextStyle bodyStyle,
   ) {
     final approvalTime = outcome.doctorApprovalTime ?? outcome.generatedAt;
-    final doctorName = outcome.doctorName ?? outcome.contactName ?? 'Dr. Clinician';
+    final doctorName =
+        outcome.doctorName ?? outcome.contactName ?? 'Dr. Clinician';
     final signature = outcome.doctorSignature;
     final signatureLabel = outcome.doctorSignatureLabel;
     return Column(
@@ -1655,10 +1640,12 @@ class _ConsultSummaryBody extends StatelessWidget {
       children: [
         Text('Reviewed and approved by: $doctorName', style: bodyStyle),
         const SizedBox(height: 4),
-        Text('Approval time: ${formatDateTime(approvalTime)}', style: bodyStyle),
+        Text('Approval time: ${formatDateTime(approvalTime)}',
+            style: bodyStyle),
         if (signature != null && signature.isNotEmpty) ...[
           const SizedBox(height: 12),
-          Text('Signature:', style: bodyStyle.copyWith(fontWeight: FontWeight.w600)),
+          Text('Signature:',
+              style: bodyStyle.copyWith(fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
@@ -1856,21 +1843,17 @@ class _TimelineList extends StatelessWidget {
 class _AutoProcessActionsCard extends StatelessWidget {
   const _AutoProcessActionsCard({
     required this.states,
-    required this.exporting,
     required this.onViewSummary,
     required this.onViewTimeline,
     required this.onOpenPatientQuestions,
     required this.onViewAll,
-    required this.onExportPdf,
   });
 
   final Map<_AutoProcess, _AutoProcessState> states;
-  final bool exporting;
   final VoidCallback onViewSummary;
   final VoidCallback onViewTimeline;
   final VoidCallback? onOpenPatientQuestions;
   final VoidCallback onViewAll;
-  final Future<void> Function() onExportPdf;
 
   bool _isEnabled(_AutoProcessState? state) {
     if (state == null) return false;
@@ -1892,259 +1875,193 @@ class _AutoProcessActionsCard extends StatelessWidget {
     final summaryState = states[_AutoProcess.summary];
     final timelineState = states[_AutoProcess.timeline];
     final patientState = states[_AutoProcess.patientQuestions];
-    final pdfState = states[_AutoProcess.pdf];
 
     final summaryHandler = _isEnabled(summaryState) ? onViewSummary : null;
     final timelineHandler = _isEnabled(timelineState) ? onViewTimeline : null;
-    final viewAllHandler = _isEnabled(summaryState) ? onViewAll : null;
     final patientHandler =
         _isEnabled(patientState) && onOpenPatientQuestions != null
             ? onOpenPatientQuestions
             : null;
-    final exportHandler =
-        (!exporting && _isEnabled(pdfState)) ? () => onExportPdf() : null;
+    final viewAllHandler = _isEnabled(summaryState) ? onViewAll : null;
+
+    final sessionItems = [
+      _SessionOutputItem(
+        label: 'Clinical Summary',
+        icon: Icons.description_outlined,
+        state: summaryState ?? _AutoProcessState.pending,
+        onTap: summaryHandler,
+      ),
+      _SessionOutputItem(
+        label: 'Follow-up Timeline',
+        icon: Icons.timeline_outlined,
+        state: timelineState ?? _AutoProcessState.pending,
+        onTap: timelineHandler,
+      ),
+      _SessionOutputItem(
+        label: 'Patient Qs',
+        icon: Icons.chat_bubble_outline,
+        state: patientState ?? _AutoProcessState.pending,
+        onTap: patientHandler,
+      ),
+      _SessionOutputItem(
+        label: 'View All',
+        icon: Icons.view_comfy_alt_outlined,
+        state: summaryState ?? _AutoProcessState.pending,
+        onTap: viewAllHandler,
+      ),
+    ];
 
     return _DetailCard(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          const spacing = 12.0;
-          final maxWidth = constraints.maxWidth;
-          final singleColumn = maxWidth < 420;
-          final tileWidth = singleColumn ? maxWidth : (maxWidth - spacing) / 2;
-
-          Widget wrapTile(Widget child) => SizedBox(
-                width: tileWidth,
-                child: child,
-              );
-
-          final tiles = <Widget>[
-            wrapTile(
-              _AutoProcessActionButton(
-                label: 'Clinical Summary',
-                icon: Icons.description_outlined,
-                state: summaryState ?? _AutoProcessState.pending,
-                onPressed: summaryHandler,
-              ),
-            ),
-            wrapTile(
-              _AutoProcessActionButton(
-                label: 'Follow-up Timeline',
-                icon: Icons.timeline_outlined,
-                state: timelineState ?? _AutoProcessState.pending,
-                onPressed: timelineHandler,
-              ),
-            ),
-            wrapTile(
-              _AutoProcessActionButton(
-                label: 'Patient Qs',
-                icon: Icons.chat_bubble_outline,
-                state: patientState ?? _AutoProcessState.pending,
-                onPressed: patientHandler,
-              ),
-            ),
-            wrapTile(
-              _AutoProcessActionButton(
-                label: 'View All',
-                icon: Icons.view_comfy_alt_outlined,
-                state: summaryState ?? _AutoProcessState.pending,
-                onPressed: viewAllHandler,
-              ),
-            ),
-            wrapTile(
-              _AutoProcessActionButton(
-                label: exporting ? 'Exporting…' : 'Export PDF',
-                icon: Icons.picture_as_pdf_outlined,
-                state: pdfState ?? _AutoProcessState.pending,
-                onPressed: exportHandler,
-                showProgress: exporting,
-              ),
-            ),
-          ];
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Session outputs',
+            style: titleStyle,
+          ),
+          const SizedBox(height: 12),
+          Column(
             children: [
-              Text(
-                'Session outputs',
-                style: titleStyle,
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: spacing,
-                runSpacing: spacing,
-                children: tiles,
-              ),
+              for (var i = 0; i < sessionItems.length; i++) ...[
+                sessionItems[i],
+                if (i < sessionItems.length - 1) const SizedBox(height: 10),
+              ],
             ],
-          );
-        },
+          ),
+        ],
       ),
     );
   }
 }
 
-class _AutoProcessActionButton extends StatelessWidget {
-  const _AutoProcessActionButton({
+class _SessionOutputItem extends StatelessWidget {
+  const _SessionOutputItem({
     required this.label,
     required this.icon,
     required this.state,
-    this.onPressed,
-    this.showProgress = false,
+    this.onTap,
   });
 
   final String label;
   final IconData icon;
   final _AutoProcessState state;
-  final VoidCallback? onPressed;
-  final bool showProgress;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final bool enabled = onPressed != null;
+    final bool enabled = onTap != null;
 
     late final String statusText;
     late final IconData statusIcon;
-    late final Color statusChipColor;
-    late final Color statusForeground;
+    late final Color statusColor;
 
     switch (state) {
       case _AutoProcessState.pending:
         statusText = 'Pending';
         statusIcon = Icons.watch_later_outlined;
-        statusChipColor = colorScheme.surfaceContainerHighest.withValues(
-          alpha: 0.8,
-        );
-        statusForeground = colorScheme.onSurfaceVariant;
+        statusColor = colorScheme.onSurfaceVariant;
         break;
       case _AutoProcessState.inProgress:
         statusText = 'Processing';
         statusIcon = Icons.autorenew;
-        statusChipColor = colorScheme.primary.withValues(alpha: 0.12);
-        statusForeground = colorScheme.primary;
+        statusColor = colorScheme.primary;
         break;
       case _AutoProcessState.ready:
         statusText = 'Ready';
         statusIcon = Icons.play_circle_outline;
-        statusChipColor = colorScheme.secondary.withValues(alpha: 0.12);
-        statusForeground = colorScheme.secondary;
+        statusColor = colorScheme.secondary;
         break;
       case _AutoProcessState.completed:
         statusText = 'Completed';
         statusIcon = Icons.check_circle_outline;
-        statusChipColor = colorScheme.primary.withValues(alpha: 0.12);
-        statusForeground = colorScheme.primary;
+        statusColor = colorScheme.primary;
         break;
     }
 
-    final Color arrowColor =
-        enabled ? colorScheme.primary : colorScheme.outline;
-    final Color iconColor =
-        enabled ? colorScheme.primary : colorScheme.outlineVariant;
-    final background = colorScheme.surfaceContainerHighest;
-    final borderColor = colorScheme.outlineVariant.withValues(alpha: 0.45);
+    final iconColor =
+        enabled ? colorScheme.primary : colorScheme.onSurfaceVariant;
+    final arrowColor =
+        enabled ? colorScheme.primary : colorScheme.onSurfaceVariant;
+    final backgroundColor = colorScheme.surfaceVariant;
+    final borderColor = colorScheme.outlineVariant.withOpacity(0.4);
 
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 160),
-      opacity: enabled ? 1 : 0.7,
-      child: DecoratedBox(
+      opacity: enabled ? 1 : 0.55,
+      child: Container(
         decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(18),
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: borderColor),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
         child: Material(
-          type: MaterialType.transparency,
+          color: Colors.transparent,
           child: InkWell(
-            onTap: onPressed,
-            borderRadius: BorderRadius.circular(18),
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(14),
             child: Padding(
               padding: const EdgeInsets.symmetric(
-                vertical: 16,
-                horizontal: 18,
+                vertical: 14,
+                horizontal: 16,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: iconColor.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        alignment: Alignment.center,
-                        child: showProgress
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : Icon(icon, color: iconColor, size: 20),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Text(
-                          label,
-                          style: AiTextStyles.body13(context).copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Icon(
-                        Icons.arrow_forward,
-                        size: 18,
-                        color: arrowColor,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      color: statusChipColor,
-                      borderRadius: BorderRadius.circular(999),
+                      color: iconColor.withOpacity(0.15),
+                      shape: BoxShape.circle,
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                    alignment: Alignment.center,
+                    child: Icon(icon, color: iconColor),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          statusIcon,
-                          size: 16,
-                          color: statusForeground,
-                        ),
-                        const SizedBox(width: 6),
                         Text(
-                          statusText,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                                color: statusForeground,
+                          label,
+                          style: theme.textTheme.bodyLarge?.copyWith(
                                 fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onSurface,
                               ) ??
                               TextStyle(
-                                fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: statusForeground,
+                                color: theme.colorScheme.onSurface,
                               ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(
+                              statusIcon,
+                              size: 14,
+                              color: statusColor,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              statusText,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                    color: statusColor,
+                                  ) ??
+                                  TextStyle(
+                                    color: statusColor,
+                                  ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
+                  ),
+                  const SizedBox(width: 12),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 16,
+                    color: arrowColor,
                   ),
                 ],
               ),

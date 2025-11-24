@@ -851,7 +851,7 @@ class _RootShellState extends State<RootShell> {
         onOpenSud: _openSudPage,
       ),
       const MessagesPage(),
-      const MyAiPage(),
+      MyAiPage(autoShowSessionControls: idx == _kTabMyAi),
       _buildCustomPage(),
       MorePage(
         profile: profile,
@@ -904,7 +904,7 @@ class _RootShellState extends State<RootShell> {
           return const NavigationDestination(
               icon: Icon(Icons.smart_toy_outlined),
               selectedIcon: Icon(Icons.smart_toy),
-              label: 'My AI');
+              label: 'Echo AI');
         case _kTabCustom:
           final shortcut = _activeShortcut;
           return NavigationDestination(
@@ -1209,7 +1209,7 @@ class _FeatureDiscoveryOverlay extends StatelessWidget {
       ),
       (
         icon: Icons.smart_toy_outlined,
-        title: 'My AI',
+        title: 'Echo AI',
         detail: 'Co-Consult, Scan, Report Generator, and Ask AI.'
       ),
       (
@@ -1256,7 +1256,7 @@ class _FeatureDiscoveryOverlay extends StatelessWidget {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'These tabs stay fixed so you can jump between Home, Chat, My AI, custom, and More anytime.',
+                              'These tabs stay fixed so you can jump between Home, Chat, Echo AI, custom, and More anytime.',
                               style: theme.textTheme.bodyMedium,
                             ),
                             const SizedBox(height: 16),

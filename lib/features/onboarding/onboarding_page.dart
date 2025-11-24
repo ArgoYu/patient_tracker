@@ -3,6 +3,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/routing/app_routes.dart';
+import '../../shared/prefs_keys.dart';
 
 const kOnboardingVersion = 2;
 
@@ -81,14 +82,15 @@ class _OnboardingPageState extends State<OnboardingPage> {
       return;
     }
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('onboarding_completed', true);
-    await prefs.setInt('onboarding_version', kOnboardingVersion);
+    await prefs.setBool(PrefsKeys.onboardingCompleted, true);
+    await prefs.setInt(PrefsKeys.onboardingVersion, kOnboardingVersion);
     if (!mounted) return;
-    Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+    Navigator.of(context).pushReplacementNamed(AppRoutes.auth);
   }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final pages = <Widget>[
       _AnimatedOnboardingPane(
         index: 0,
@@ -150,8 +152,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
           showScoreBar: _showScoreBar,
           autoFollowUps: _autoFollowUps,
           highlightMeds: _highlightMeds,
-          onFormatChanged: (format) =>
-              setState(() => _exportFormat = format),
+          onFormatChanged: (format) => setState(() => _exportFormat = format),
           onIncludePatientQuestionsChanged: (value) =>
               setState(() => _includePatientQuestions = value),
           onShowScoreBarChanged: (value) =>
@@ -173,7 +174,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: colorScheme.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -205,6 +206,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
                         ? 'Finish onboarding'
                         : 'Next onboarding step',
                     child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colorScheme.primary,
+                        foregroundColor: colorScheme.onPrimary,
+                      ),
                       onPressed: () {
                         if (_index == pages.length - 1) {
                           _finish();
@@ -295,7 +300,7 @@ class _AppOverview extends StatelessWidget {
         icon: Icons.chat_bubble_outline,
       ),
       (
-        label: 'My AI',
+        label: 'Echo AI',
         description: 'Co-Consult, AI Report, Scan, and Ask AI tools.',
         icon: Icons.smart_toy_outlined,
       ),
@@ -583,18 +588,20 @@ class _OnboardingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final card = Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
             blurRadius: 24,
-            offset: Offset(0, 16),
-            color: Color(0x11000000),
+            offset: const Offset(0, 16),
+            color: colorScheme.shadow.withValues(alpha: 0.08),
           ),
         ],
       ),
@@ -615,19 +622,16 @@ class _OnboardingCard extends StatelessWidget {
             ),
           Text(
             title,
-            style: Theme.of(context)
-                .textTheme
-                .headlineSmall
+            style: theme.textTheme.headlineSmall
                 ?.copyWith(fontWeight: FontWeight.bold),
           ),
           if (subtitle != null) ...[
             const SizedBox(height: 8),
             Text(
               subtitle!,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: Colors.black54),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurface.withOpacity(0.7),
+              ),
             ),
           ],
           if (children != null) ...[
@@ -670,6 +674,10 @@ class _CardAction {
       button: true,
       label: label,
       child: FilledButton(
+        style: FilledButton.styleFrom(
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        ),
         onPressed: onTap,
         child: Text(label),
       ),
@@ -709,10 +717,12 @@ class _OverviewRow extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 description,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: Colors.black54),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.7),
+                    ),
               ),
             ],
           ),
@@ -763,14 +773,18 @@ class _PermissionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return ListTile(
       contentPadding: EdgeInsets.zero,
       title: Text(label),
       subtitle: Text(description),
       trailing: granted
-          ? const Chip(
-              label: Text('Granted'),
-              backgroundColor: Color(0xFFE4F5EC),
+          ? Chip(
+              label: Text(
+                'Granted',
+                style: TextStyle(color: colorScheme.onPrimaryContainer),
+              ),
+              backgroundColor: colorScheme.primaryContainer,
             )
           : OutlinedButton(
               onPressed: onGrant,

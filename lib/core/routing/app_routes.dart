@@ -8,6 +8,7 @@ import '../../features/voice_chat/voice_chat_page.dart';
 import '../../features/interpret/view/interpret_page.dart';
 import '../../features/ask_ai_doctor/chat_screen.dart';
 import '../../features/timeline/timeline_page.dart';
+import '../../features/auth/auth_gate_page.dart';
 
 /// Central place for route names and builders.
 class AppRoutes {
@@ -15,6 +16,7 @@ class AppRoutes {
 
   static const String home = '/';
   static const String onboarding = OnboardingPage.routeName;
+  static const String auth = AuthGatePage.routeName;
   static const String trends = '/trends';
   static const String feelings = '/feelings';
   static const String profile = '/profile';
@@ -29,6 +31,7 @@ class AppRoutes {
 
   static Map<String, WidgetBuilder> routes = {
     onboarding: (_) => const OnboardingPage(),
+    auth: (_) => const AuthGatePage(),
     home: (_) => const RootShell(),
     trends: (_) => const RootShell(initialIndex: 0),
     feelings: (_) => const RootShell(initialIndex: 0),
