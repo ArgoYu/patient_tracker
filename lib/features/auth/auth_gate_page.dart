@@ -8,6 +8,7 @@ import '../../core/routing/app_routes.dart';
 import '../../shared/prefs_keys.dart';
 import 'demo_credentials.dart';
 import 'mock_auth_api.dart';
+import 'auth_service.dart';
 
 class AuthGatePage extends StatefulWidget {
   const AuthGatePage({super.key});
@@ -31,7 +32,8 @@ class _AuthGatePageState extends State<AuthGatePage> {
   int _secondsLeft = 0;
   String? _error;
   Timer? _timer;
-  bool _rememberMe = true;
+  /// Controls whether the secure token/refresh info is persisted for future runs.
+  bool _rememberMe = false;
 
   @override
   void dispose() {
@@ -182,50 +184,40 @@ class _AuthGatePageState extends State<AuthGatePage> {
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      // Demo-only shortcut guarded by debug mode so production builds stay secure.
-      final isDemoLogin =
-          kDebugMode && isDemoAccount(email: email, password: password);
       if (_isLogin) {
-        if (!isDemoLogin) {
-          final storedEmail = prefs.getString(PrefsKeys.authEmail);
-          final emailVerified = prefs.getBool(PrefsKeys.emailVerified) ?? false;
-          if (storedEmail != email || !emailVerified) {
-            if (!mounted) return;
-            setState(() {
-              _error =
-                  'This email is not verified yet. Please complete sign up first.';
-            });
-            return;
-          }
-        }
-        await prefs.setBool(PrefsKeys.emailVerified, true);
-        await prefs.setString(PrefsKeys.authEmail, email);
-      } else {
-        try {
-          await MockAuthApi.instance.verifyEmailCode(email: email, code: code);
-        } on EmailCodeException catch (e) {
-          if (!mounted) return;
-          setState(() {
-            _error = e.type == EmailCodeError.expired
-                ? 'Verification code has expired. Please request a new one.'
-                : 'Verification code is incorrect.';
-          });
-          return;
-        }
-        await MockAuthApi.instance.register(email: email, password: password);
-        await prefs.setBool(PrefsKeys.emailVerified, true);
-        await prefs.setString(PrefsKeys.authEmail, email);
+        final result = await AuthService.instance.login(
+          email: email,
+          password: password,
+          rememberMe: _rememberMe,
+        );
+        await _completeLogin(email, result);
+        return;
       }
-      await prefs.setBool(PrefsKeys.isLoggedIn, true);
-      await prefs.setString(PrefsKeys.authToken, 'local-demo-token');
-      await prefs.setBool(PrefsKeys.rememberMe, _rememberMe);
 
-      if (!mounted) return;
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRoutes.home,
-        (route) => false,
+      try {
+        await MockAuthApi.instance.verifyEmailCode(email: email, code: code);
+      } on EmailCodeException catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _error = e.type == EmailCodeError.expired
+              ? 'Verification code has expired. Please request a new one.'
+              : 'Verification code is incorrect.';
+        });
+        return;
+      }
+      await MockAuthApi.instance.register(email: email, password: password);
+      final result = await AuthService.instance.login(
+        email: email,
+        password: password,
+        rememberMe: _rememberMe,
       );
+      await _completeLogin(email, result);
+      return;
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.message;
+      });
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -238,6 +230,25 @@ class _AuthGatePageState extends State<AuthGatePage> {
         });
       }
     }
+  }
+
+  Future<void> _completeLogin(String email, AuthLoginResult result) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(PrefsKeys.emailVerified, true);
+    await prefs.setString(PrefsKeys.authEmail, email);
+
+    if (result.requiresTwoFactor) {
+      if (!mounted) return;
+      // Backend requires a second factor before allowing access to the main app.
+      Navigator.of(context).pushNamed(AppRoutes.twoFactor);
+      return;
+    }
+
+    if (!mounted) return;
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      AppRoutes.home,
+      (route) => false,
+    );
   }
 
   @override
@@ -390,25 +401,24 @@ class _AuthGatePageState extends State<AuthGatePage> {
                                   ?.copyWith(color: colorScheme.error),
                             ),
                           ],
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Checkbox(
-                                value: _rememberMe,
-                                onChanged: _busy
-                                    ? null
-                                    : (value) => setState(() {
-                                          _rememberMe = value ?? false;
-                                        }),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
+                          if (_isLogin) ...[
+                            const SizedBox(height: 12),
+                            // Remember me triggers secure storage so future launches can auto-login.
+                            CheckboxListTile(
+                              contentPadding: EdgeInsets.zero,
+                              controlAffinity: ListTileControlAffinity.leading,
+                              value: _rememberMe,
+                              onChanged: _busy
+                                  ? null
+                                  : (value) => setState(() {
+                                        _rememberMe = value ?? false;
+                                      }),
+                              title: Text(
                                 'Remember me',
                                 style: theme.textTheme.bodyMedium,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                           const SizedBox(height: 16),
                           ElevatedButton(
                             onPressed: _busy ? null : _handleSubmit,

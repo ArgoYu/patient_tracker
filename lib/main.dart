@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app.dart';
 import 'core/routing/app_routes.dart';
 import 'features/onboarding/onboarding_page.dart';
+import 'features/auth/auth_service.dart';
 import 'features/voice_chat/services/voice_ai_http_service.dart';
 import 'features/voice_chat/services/voice_ai_service.dart';
 import 'features/voice_chat/services/voice_ai_service_registry.dart';
@@ -26,15 +27,11 @@ Future<void> main() async {
   final sp = await SharedPreferences.getInstance();
   final done = sp.getBool(PrefsKeys.onboardingCompleted) ?? false;
   final version = sp.getInt(PrefsKeys.onboardingVersion) ?? 0;
-  final authToken = sp.getString(PrefsKeys.authToken);
-  final emailVerified = sp.getBool(PrefsKeys.emailVerified) ?? false;
-  final isLoggedIn = (sp.getBool(PrefsKeys.isLoggedIn) ??
-          (authToken != null && authToken.isNotEmpty)) &&
-      emailVerified;
   final needOnboarding = !done || version < kOnboardingVersion;
+  final remembered = await AuthService.instance.tryAutoLogin();
   final initialRoute = needOnboarding
       ? AppRoutes.onboarding
-      : (isLoggedIn ? AppRoutes.home : AppRoutes.auth);
+      : (remembered ? AppRoutes.home : AppRoutes.auth);
   runApp(AppRoot(initialRoute: initialRoute));
 }
 

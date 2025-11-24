@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../features/auth/auth_service.dart';
 import '../../shared/prefs_keys.dart';
 
 /// Stubbed auth-facing repository so UI flows can call into a single place.
@@ -31,9 +32,7 @@ class AuthRepository {
   }
 
   Future<void> signOut() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(PrefsKeys.isLoggedIn, false);
-    await prefs.remove(PrefsKeys.authToken);
+    await AuthService.instance.signOut();
   }
 
   Future<String?> currentEmail() async {

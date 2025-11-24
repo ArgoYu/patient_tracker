@@ -106,7 +106,7 @@ class AuthService {
     final token = 'token-${DateTime.now().millisecondsSinceEpoch}';
     final refreshToken = 'refresh-${email.hashCode}-${_random.nextInt(9999)}';
     final requiresTwoFactor = !isDemoAccount(email: email, password: password);
-    final methods = TwoFactorMethod.values;
+    const methods = TwoFactorMethod.values;
 
     if (requiresTwoFactor) {
       _pendingCode = _generateCode();

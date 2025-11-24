@@ -28,7 +28,8 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
   void initState() {
     super.initState();
     final methods = _pending?.availableMethods;
-    _selectedMethod = methods?.isNotEmpty == true ? methods.first : null;
+    _selectedMethod =
+        (methods != null && methods.isNotEmpty) ? methods.first : null;
     if (_selectedMethod != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _sendCode());
     }
@@ -48,20 +49,21 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
     });
     try {
       await AuthService.instance.requestTwoFactorCode(_selectedMethod!);
+      if (!mounted) return;
       setState(() {
         _codeSent = true;
         _statusMessage = 'Code sent via ${_methodLabel(_selectedMethod!)}.';
       });
-    } catch (error) {
+    } catch (_) {
+      if (!mounted) return;
       setState(() {
         _error = 'Unable to send a code right now. Try again shortly.';
       });
     } finally {
-      if (mounted) {
-        setState(() {
-          _isRequestingCode = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _isRequestingCode = false;
+      });
     }
   }
 
@@ -93,6 +95,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
         _error = 'The code is incorrect or expired. Please try again.';
       });
     }
+    if (!mounted) return;
     setState(() {
       _isVerifying = false;
     });
@@ -112,6 +115,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
   @override
   Widget build(BuildContext context) {
     if (_pending == null) {
+      // Guard against deep links arriving here without a pending two-factor state.
       return Scaffold(
         appBar: AppBar(title: const Text('Two-Factor Verification')),
         body: Center(
