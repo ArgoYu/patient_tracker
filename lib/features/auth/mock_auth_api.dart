@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'demo_credentials.dart';
+
 /// A lightweight stub for sending and verifying email codes.
 ///
 /// This simulates backend calls so the UI can enforce verification without
@@ -14,9 +16,11 @@ class MockAuthApi {
 
   Future<String> sendEmailCode(String email) async {
     await Future<void>.delayed(const Duration(milliseconds: 450));
-    final code = _generateCode();
+    final code = isDemoEmail(email) ? demoVerificationCode : _generateCode();
     _codes[email] = _CodeState(
-        code: code, expiresAt: DateTime.now().add(const Duration(minutes: 5)));
+      code: code,
+      expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+    );
     return code;
   }
 

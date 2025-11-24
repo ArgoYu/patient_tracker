@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/routing/app_routes.dart';
 import '../../shared/prefs_keys.dart';
+import 'demo_credentials.dart';
 import 'mock_auth_api.dart';
 
 class AuthGatePage extends StatefulWidget {
@@ -29,6 +31,7 @@ class _AuthGatePageState extends State<AuthGatePage> {
   int _secondsLeft = 0;
   String? _error;
   Timer? _timer;
+  bool _rememberMe = true;
 
   @override
   void dispose() {
@@ -117,6 +120,25 @@ class _AuthGatePageState extends State<AuthGatePage> {
     }
   }
 
+  /// Demo-only helper to prefill the presentation account.
+  void _useDemoCredentials() {
+    if (!kDebugMode) return;
+    if (!_isLogin) {
+      _switchMode(true);
+    }
+    _timer?.cancel();
+    setState(() {
+      _emailController.text = demoAuthEmail;
+      _passwordController.text = demoAuthPassword;
+      _confirmController.text = demoAuthPassword;
+      _codeController.clear();
+      _rememberMe = true;
+      _codeSent = false;
+      _secondsLeft = 0;
+      _error = null;
+    });
+  }
+
   Future<void> _handleSubmit() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
@@ -161,17 +183,23 @@ class _AuthGatePageState extends State<AuthGatePage> {
 
     try {
       final prefs = await SharedPreferences.getInstance();
+      // Demo-only shortcut guarded by debug mode so production builds stay secure.
+      final isDemoLogin =
+          kDebugMode && isDemoAccount(email: email, password: password);
       if (_isLogin) {
-        final storedEmail = prefs.getString(PrefsKeys.authEmail);
-        final emailVerified = prefs.getBool(PrefsKeys.emailVerified) ?? false;
-        if (storedEmail != email || !emailVerified) {
-          if (!mounted) return;
-          setState(() {
-            _error =
-                'This email is not verified yet. Please complete sign up first.';
-          });
-          return;
+        if (!isDemoLogin) {
+          final storedEmail = prefs.getString(PrefsKeys.authEmail);
+          final emailVerified = prefs.getBool(PrefsKeys.emailVerified) ?? false;
+          if (storedEmail != email || !emailVerified) {
+            if (!mounted) return;
+            setState(() {
+              _error =
+                  'This email is not verified yet. Please complete sign up first.';
+            });
+            return;
+          }
         }
+        await prefs.setBool(PrefsKeys.emailVerified, true);
         await prefs.setString(PrefsKeys.authEmail, email);
       } else {
         try {
@@ -191,6 +219,7 @@ class _AuthGatePageState extends State<AuthGatePage> {
       }
       await prefs.setBool(PrefsKeys.isLoggedIn, true);
       await prefs.setString(PrefsKeys.authToken, 'local-demo-token');
+      await prefs.setBool(PrefsKeys.rememberMe, _rememberMe);
 
       if (!mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil(
@@ -361,6 +390,25 @@ class _AuthGatePageState extends State<AuthGatePage> {
                                   ?.copyWith(color: colorScheme.error),
                             ),
                           ],
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: _rememberMe,
+                                onChanged: _busy
+                                    ? null
+                                    : (value) => setState(() {
+                                          _rememberMe = value ?? false;
+                                        }),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Remember me',
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                            ],
+                          ),
                           const SizedBox(height: 16),
                           ElevatedButton(
                             onPressed: _busy ? null : _handleSubmit,
@@ -381,6 +429,16 @@ class _AuthGatePageState extends State<AuthGatePage> {
                     ),
                   ),
                   const SizedBox(height: 12),
+                  if (kDebugMode && _isLogin) ...[
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _busy ? null : _useDemoCredentials,
+                        child: const Text('Use demo account'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   TextButton(
                     onPressed: _busy ? null : () => _switchMode(!_isLogin),
                     child: Text(
