@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/routing/app_routes.dart';
 import 'auth_service.dart';
+import 'demo_credentials.dart';
 
 class TwoFactorScreen extends StatefulWidget {
   const TwoFactorScreen({super.key});
@@ -23,6 +24,8 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
 
   PendingTwoFactorSession? get _pending =>
       AuthService.instance.pendingTwoFactorSession;
+
+  bool get _isDemoUser => AuthService.instance.currentUserIsDemo;
 
   @override
   void initState() {
@@ -148,6 +151,15 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
                     ?.copyWith(color: colorScheme.onBackground.withOpacity(0.7)),
               ),
               const SizedBox(height: 24),
+              if (_isDemoUser)
+                Text(
+                  'Demo accounts always require a second factor. Enter '
+                  '$demoVerificationCode to proceed.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.primary,
+                  ),
+                ),
+              if (_isDemoUser) const SizedBox(height: 12),
               Text(
                 'Choose how to receive your 6-digit code:',
                 style: theme.textTheme.bodyMedium,

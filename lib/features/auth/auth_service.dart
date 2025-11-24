@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'demo_credentials.dart';
@@ -68,24 +70,102 @@ class AuthException implements Exception {
   final String message;
 }
 
+/// A safe wrapper around [FlutterSecureStorage] that only runs on mobile and
+/// gracefully handles Keychain/credential errors instead of crashing.
+class SafeSecureStorage {
+  SafeSecureStorage();
+
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+
+  bool get _isMobilePlatform => Platform.isAndroid || Platform.isIOS;
+
+  Future<void> write({required String key, String? value}) async {
+    if (kIsWeb) return;
+
+    if (!_isMobilePlatform) {
+      // On desktop, remember-me persistence is currently disabled to avoid
+      // keychain entitlement issues; safe to enable later once entitlements are
+      // configured.
+      debugPrint('SecureStorage write skipped on ${Platform.operatingSystem}');
+      return;
+    }
+
+    try {
+      await _storage.write(key: key, value: value);
+    } on PlatformException catch (e) {
+      debugPrint('SecureStorage write failed: $e');
+    }
+  }
+
+  Future<String?> read({required String key}) async {
+    if (kIsWeb) return null;
+
+    if (!_isMobilePlatform) {
+      debugPrint('SecureStorage read skipped on ${Platform.operatingSystem}');
+      return null;
+    }
+
+    try {
+      return await _storage.read(key: key);
+    } on PlatformException catch (e) {
+      debugPrint('SecureStorage read failed: $e');
+      return null;
+    }
+  }
+
+  Future<void> delete({required String key}) async {
+    if (kIsWeb) return;
+
+    if (!_isMobilePlatform) {
+      debugPrint('SecureStorage delete skipped on ${Platform.operatingSystem}');
+      return;
+    }
+
+    try {
+      await _storage.delete(key: key);
+    } on PlatformException catch (e) {
+      debugPrint('SecureStorage delete failed: $e');
+    }
+  }
+
+  Future<void> deleteAll() async {
+    if (kIsWeb) return;
+
+    if (!_isMobilePlatform) {
+      debugPrint('SecureStorage deleteAll skipped on ${Platform.operatingSystem}');
+      return;
+    }
+
+    try {
+      await _storage.deleteAll();
+    } on PlatformException catch (e) {
+      debugPrint('SecureStorage deleteAll failed: $e');
+    }
+  }
+}
+
 /// Handles authentication, secure persistence, and two-factor interactions.
 class AuthService {
   AuthService._();
 
   static final AuthService instance = AuthService._();
 
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  final SafeSecureStorage _secureStorage = SafeSecureStorage();
   final Random _random = Random();
 
   PendingTwoFactorSession? _pendingSession;
   String? _pendingCode;
   AuthSession? _currentSession;
+  bool _currentUserIsDemo = false;
 
   static const _tokenKey = 'auth_token';
   static const _refreshKey = 'refresh_token';
   static const _userIdKey = 'auth_user_id';
   static const _expiryKey = 'auth_token_expiry';
   static const _rememberMeKey = 'remember_me';
+
+  /// Indicates whether the active session or pending login belongs to the demo account.
+  bool get currentUserIsDemo => _currentUserIsDemo;
 
   bool get isAuthenticated => _currentSession != null;
 
@@ -105,11 +185,14 @@ class AuthService {
     final userId = 'user-${email.hashCode}';
     final token = 'token-${DateTime.now().millisecondsSinceEpoch}';
     final refreshToken = 'refresh-${email.hashCode}-${_random.nextInt(9999)}';
-    final requiresTwoFactor = !isDemoAccount(email: email, password: password);
+    final isDemoLogin = isDemoAccount(email: email, password: password);
+    _currentUserIsDemo = isDemoLogin;
+    // Demo users are always forced through the two-factor flow so the demo can
+    // showcase the complete experience before landing in the app.
+    final requiresTwoFactor = true;
     const methods = TwoFactorMethod.values;
 
     if (requiresTwoFactor) {
-      _pendingCode = _generateCode();
       _pendingSession = PendingTwoFactorSession(
         email: email,
         userId: userId,
@@ -118,9 +201,6 @@ class AuthService {
         rememberMe: rememberMe,
         availableMethods: methods,
       );
-      if (kDebugMode) {
-        debugPrint('2FA code for $email: $_pendingCode');
-      }
       return AuthLoginResult(
         userId: userId,
         token: token,
@@ -156,9 +236,19 @@ class AuthService {
       throw const AuthException('No pending verification available.');
     }
     await Future<void>.delayed(const Duration(milliseconds: 360));
-    _pendingCode = _generateCode();
+    if (_currentUserIsDemo) {
+      // The demo account always uses the fixed demo verification code (000000)
+      // for testing and demo flows only so the two-factor screen can show the
+      // complete experience without a backend call.
+      _pendingCode = demoVerificationCode;
+    } else {
+      _pendingCode = _generateCode();
+    }
     if (kDebugMode) {
-      debugPrint('2FA code for ${pending.email} via $method: $_pendingCode');
+      debugPrint(
+        '2FA code for ${pending.email} via $method: $_pendingCode '
+        '${_currentUserIsDemo ? '(demo fixed code)' : ''}',
+      );
     }
   }
 
@@ -169,7 +259,8 @@ class AuthService {
       throw const AuthException('No pending verification available.');
     }
     await Future<void>.delayed(const Duration(milliseconds: 360));
-    if (code != _pendingCode) {
+    final expectedCode = _currentUserIsDemo ? demoVerificationCode : _pendingCode;
+    if (expectedCode == null || code != expectedCode) {
       return false;
     }
 
@@ -224,6 +315,7 @@ class AuthService {
     _currentSession = null;
     _pendingSession = null;
     _pendingCode = null;
+    _currentUserIsDemo = false;
     await _clearSecureSession();
   }
 
