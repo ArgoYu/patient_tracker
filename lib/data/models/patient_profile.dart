@@ -7,10 +7,14 @@ class PatientProfile {
     required this.patientId,
     this.avatarUrl,
     this.notes,
+    this.email,
+    this.phoneNumber,
   });
 
   final String name;
   final String patientId;
   final String? avatarUrl;
   final String? notes;
+  final String? email;
+  final String? phoneNumber;
 }

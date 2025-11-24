@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:patient_tracker/shared/language_preferences.dart';
 
 import '../models/interpret_models.dart';
 import '../services/interpret_services.dart';
@@ -212,6 +213,21 @@ class InterpretController extends ChangeNotifier {
       ),
     );
     notifyListeners();
+  }
+
+  void applyPreferredLanguage(String code) {
+    final target = LanguagePreferences.isSupported(code)
+        ? code
+        : LanguagePreferences.fallbackLanguageCode;
+    final changed = langOut != target || langIn != 'en-US';
+    langIn = 'en-US';
+    langOut = target;
+    if (changed) {
+      clearCaptions();
+      _infoBanner =
+          'Bilingual mode set to English ↔ ${describeLanguage(target)}';
+      notifyListeners();
+    }
   }
 
   Future<void> typeAndTranslate(String text) async {

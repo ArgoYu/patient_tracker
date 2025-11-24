@@ -145,6 +145,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _appointmentReminders = true;
   bool _newsletterOptIn = false;
   String _measurementUnit = 'Metric (kg, cm)';
+  String _preferredLanguageCode = LanguagePreferences.fallbackLanguageCode;
 
   @override
   void initState() {
@@ -152,6 +153,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _profile = widget.profile;
     _customDestination = widget.customDestination;
     _customSelectionMade = widget.customSelectionMade;
+    _loadPreferredLanguage();
   }
 
   @override
@@ -168,10 +170,16 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  Future<void> _openProfileEditor() async {
+  Future<void> _openAccountSettings() async {
     final updated = await Navigator.of(context).push<PatientProfile>(
       MaterialPageRoute(
-        builder: (_) => EditProfilePage(initial: _profile),
+        builder: (_) => AccountSettingsPage(
+          profile: _profile,
+          onProfileChanged: (p) {
+            setState(() => _profile = p);
+            widget.onProfileChanged(p);
+          },
+        ),
       ),
     );
     if (updated != null) {
@@ -223,7 +231,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 title: Text(_profile.name),
                 subtitle: Text(_profile.patientId),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: _openProfileEditor,
+                onTap: _openAccountSettings,
               );
             }),
           ),
@@ -441,10 +449,10 @@ class _SettingsPageState extends State<SettingsPage> {
                 ListTile(
                   leading: const Icon(Icons.language),
                   title: const Text('Interface language'),
-                  subtitle: const Text('English (US)'),
+                  subtitle: Text(
+                      LanguagePreferences.labelFor(_preferredLanguageCode)),
                   trailing: FilledButton.tonal(
-                    onPressed: () =>
-                        showToast(context, 'Language switching coming soon'),
+                    onPressed: _pickLanguage,
                     child: const Text('Change'),
                   ),
                 ),
@@ -560,6 +568,51 @@ class _SettingsPageState extends State<SettingsPage> {
 
     if (result != null) {
       setState(() => _measurementUnit = result);
+    }
+  }
+
+  Future<void> _loadPreferredLanguage() async {
+    final code = await LanguagePreferences.loadPreferredLanguageCode();
+    if (!mounted) return;
+    setState(() => _preferredLanguageCode = code);
+  }
+
+  Future<void> _pickLanguage() async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (ctx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Choose language',
+              style: Theme.of(ctx).textTheme.titleMedium,
+            ),
+          ),
+          ...LanguagePreferences.supportedLanguages.map(
+            (lang) => RadioListTile<String>(
+              value: lang.code,
+              groupValue: _preferredLanguageCode,
+              title: Text(lang.label),
+              onChanged: (value) => Navigator.of(ctx).pop(value),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+
+    if (selected != null && selected != _preferredLanguageCode) {
+      setState(() => _preferredLanguageCode = selected);
+      await LanguagePreferences.savePreferredLanguageCode(selected);
+      if (mounted) {
+        showToast(context,
+            'Language updated to ${LanguagePreferences.labelFor(selected)}');
+      }
     }
   }
 }

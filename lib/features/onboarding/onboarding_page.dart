@@ -3,6 +3,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/routing/app_routes.dart';
+import '../../shared/language_preferences.dart';
 import '../../shared/prefs_keys.dart';
 
 const kOnboardingVersion = 2;
@@ -33,6 +34,14 @@ class _OnboardingPageState extends State<OnboardingPage> {
   bool _showScoreBar = true;
   bool _autoFollowUps = true;
   bool _highlightMeds = true;
+  String _preferredLanguageCode =
+      LanguagePreferences.fallbackLanguageCode;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferredLanguage();
+  }
 
   @override
   void dispose() {
@@ -52,6 +61,17 @@ class _OnboardingPageState extends State<OnboardingPage> {
       }
     }
     return false;
+  }
+
+  Future<void> _loadPreferredLanguage() async {
+    final code = await LanguagePreferences.loadPreferredLanguageCode();
+    if (!mounted) return;
+    setState(() => _preferredLanguageCode = code);
+  }
+
+  Future<void> _onLanguageChanged(String code) async {
+    setState(() => _preferredLanguageCode = code);
+    await LanguagePreferences.savePreferredLanguageCode(code);
   }
 
   bool get _reduceMotion =>
@@ -84,6 +104,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(PrefsKeys.onboardingCompleted, true);
     await prefs.setInt(PrefsKeys.onboardingVersion, kOnboardingVersion);
+    await prefs.setString(
+      PrefsKeys.preferredLanguageCode,
+      _preferredLanguageCode,
+    );
     if (!mounted) return;
     Navigator.of(context).pushReplacementNamed(AppRoutes.auth);
   }
@@ -97,6 +121,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
         currentIndex: _index,
         reduceMotion: _reduceMotion,
         child: _Welcome(
+          selectedLanguage: _preferredLanguageCode,
+          onLanguageChanged: _onLanguageChanged,
           onGetStarted: () => _controller.nextPage(
             duration: const Duration(milliseconds: 260),
             curve: Curves.easeOutCubic,
@@ -267,18 +293,66 @@ class _AnimatedOnboardingPane extends StatelessWidget {
 }
 
 class _Welcome extends StatelessWidget {
-  const _Welcome({required this.onGetStarted});
+  const _Welcome({
+    required this.onGetStarted,
+    required this.selectedLanguage,
+    required this.onLanguageChanged,
+  });
 
   final VoidCallback onGetStarted;
+  final String selectedLanguage;
+  final ValueChanged<String> onLanguageChanged;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return _OnboardingCard(
       title: 'Welcome to Patient Tracker',
       subtitle:
           'Track visits, coordinate with care teams, and keep AI support across the whole app.',
       illustration: Icons.favorite_outline,
       primary: _CardAction(label: 'Get started', onTap: onGetStarted),
+      children: [
+        Text(
+          'Choose your language',
+          style: theme.textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 10,
+          runSpacing: 8,
+          children: LanguagePreferences.supportedLanguages
+              .map(
+                (lang) => ChoiceChip(
+                  label: Text(lang.label),
+                  selected: lang.code == selectedLanguage,
+                  selectedColor: colorScheme.primary,
+                  onSelected: (_) => onLanguageChanged(lang.code),
+                  labelStyle: TextStyle(
+                    color: lang.code == selectedLanguage
+                        ? colorScheme.onPrimary
+                        : colorScheme.onSurface,
+                  ),
+                  shape: StadiumBorder(
+                    side: BorderSide(
+                      color: lang.code == selectedLanguage
+                          ? colorScheme.primary
+                          : colorScheme.outlineVariant,
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Used for bilingual translation and onboarding text.',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurface.withOpacity(0.7),
+          ),
+        ),
+      ],
     );
   }
 }

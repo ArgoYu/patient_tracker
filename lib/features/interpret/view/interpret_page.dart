@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:patient_tracker/shared/language_preferences.dart';
 
 import '../controller/interpret_controller.dart';
 import '../models/interpret_models.dart';
@@ -35,6 +36,7 @@ class _InterpretPageState extends State<InterpretPage> {
       mt: const MockMtService(),
       tts: FlutterTtsService(),
     );
+    _loadPreferredLanguage();
   }
 
   @override
@@ -44,6 +46,12 @@ class _InterpretPageState extends State<InterpretPage> {
     _sourceScroll.dispose();
     _targetScroll.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadPreferredLanguage() async {
+    final code = await LanguagePreferences.loadPreferredLanguageCode();
+    if (!mounted) return;
+    _controller.applyPreferredLanguage(code);
   }
 
   @override

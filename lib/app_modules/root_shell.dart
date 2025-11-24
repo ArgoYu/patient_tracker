@@ -290,7 +290,9 @@ class _RootShellState extends State<RootShell> {
       name: 'Argo',
       patientId: 'MRN 2025-001',
       avatarUrl: null,
-      notes: 'Anxiety · Insomnia');
+      notes: 'Anxiety · Insomnia',
+      email: 'argo@example.com',
+      phoneNumber: '(415) 555-0135');
   List<HomePanel> homeOrder = [
     HomePanel.goals,
     HomePanel.meds,
@@ -942,8 +944,7 @@ class _RootShellState extends State<RootShell> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: navSelectedIndex,
-        onDestinationSelected: (selected) =>
-            _switchTab(visibleSlots[selected]),
+        onDestinationSelected: (selected) => _switchTab(visibleSlots[selected]),
         destinations: [
           for (final slot in visibleSlots) destinationForSlot(slot),
         ],
@@ -1276,8 +1277,7 @@ class _FeatureDiscoveryOverlay extends StatelessWidget {
                                         children: [
                                           Text(
                                             hint.title,
-                                            style: theme
-                                                .textTheme.titleMedium
+                                            style: theme.textTheme.titleMedium
                                                 ?.copyWith(
                                               fontWeight: FontWeight.w600,
                                             ),

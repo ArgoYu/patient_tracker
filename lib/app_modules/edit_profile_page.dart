@@ -46,7 +46,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           ? widget.initial.patientId
                           : idC.text.trim(),
                       avatarUrl: url.isEmpty ? null : url,
-                      notes: notesC.text.trim());
+                      notes: notesC.text.trim(),
+                      email: widget.initial.email,
+                      phoneNumber: widget.initial.phoneNumber);
                   Navigator.pop(context, updated);
                 },
                 child: const Text('Save'))
