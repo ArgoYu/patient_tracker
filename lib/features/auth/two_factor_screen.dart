@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../core/routing/app_routes.dart';
+<<<<<<< HEAD
 import '../onboarding/onboarding_page.dart';
+=======
+import '../onboarding/global_onboarding_screen.dart';
+>>>>>>> 3d14e5a (2FA set up after sign up)
 import 'auth_service.dart';
 import 'demo_credentials.dart';
 import 'two_factor_success_screen.dart';
@@ -74,6 +78,11 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
   }
 
   Future<void> _verifyCode() async {
+<<<<<<< HEAD
+=======
+    final pending = _pending;
+    if (pending == null) return;
+>>>>>>> 3d14e5a (2FA set up after sign up)
     final code = _codeController.text.trim();
     if (code.isEmpty) {
       setState(() {
@@ -115,6 +124,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
           : null;
 
       if (!mounted) return;
+<<<<<<< HEAD
       await Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 800),
@@ -123,6 +133,22 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
             nextRouteArguments: nextRouteArguments,
           ),
         ),
+=======
+      if (pending.showOnboardingAfterSuccess) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => GlobalOnboardingScreen(
+              userId: pending.userId,
+              isNewlyRegistered: pending.showOnboardingAfterSuccess,
+            ),
+          ),
+        );
+        return;
+      }
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRoutes.home,
+        (route) => false,
+>>>>>>> 3d14e5a (2FA set up after sign up)
       );
     } finally {
       if (mounted) {

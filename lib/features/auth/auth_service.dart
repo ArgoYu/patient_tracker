@@ -6,8 +6,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'demo_credentials.dart';
+<<<<<<< HEAD
 import 'user_identity.dart';
 import 'user_profile_store.dart';
+=======
+import 'mock_auth_api.dart';
+>>>>>>> 3d14e5a (2FA set up after sign up)
 
 enum TwoFactorMethod {
   sms,
@@ -15,9 +19,15 @@ enum TwoFactorMethod {
   googleDuo,
 }
 
+<<<<<<< HEAD
 enum LoginMethod {
   password2fa,
   biometrics,
+=======
+enum TwoFactorFlowType {
+  challenge,
+  enrollment,
+>>>>>>> 3d14e5a (2FA set up after sign up)
 }
 
 /// Represents the data needed to continue a pending two-factor verification.
@@ -28,6 +38,9 @@ class PendingTwoFactorSession {
     required this.token,
     required this.refreshToken,
     required this.availableMethods,
+    required this.showOnboardingAfterSuccess,
+    required this.hasCompletedGlobalOnboarding,
+    required this.flowType,
   });
 
   final String email;
@@ -35,6 +48,9 @@ class PendingTwoFactorSession {
   final String token;
   final String refreshToken;
   final List<TwoFactorMethod> availableMethods;
+  final bool showOnboardingAfterSuccess;
+  final bool hasCompletedGlobalOnboarding;
+  final TwoFactorFlowType flowType;
 }
 
 /// Holds the authenticated session details.
@@ -43,11 +59,34 @@ class AuthSession {
     required this.userId,
     required this.token,
     required this.refreshToken,
+<<<<<<< HEAD
+=======
+    required this.rememberMe,
+    required this.hasCompletedGlobalOnboarding,
+>>>>>>> 3d14e5a (2FA set up after sign up)
   });
 
   final String userId;
   final String token;
   final String refreshToken;
+<<<<<<< HEAD
+=======
+  final bool rememberMe;
+  final bool hasCompletedGlobalOnboarding;
+
+  AuthSession copyWith({
+    bool? hasCompletedGlobalOnboarding,
+  }) {
+    return AuthSession(
+      userId: userId,
+      token: token,
+      refreshToken: refreshToken,
+      rememberMe: rememberMe,
+      hasCompletedGlobalOnboarding:
+          hasCompletedGlobalOnboarding ?? this.hasCompletedGlobalOnboarding,
+    );
+  }
+>>>>>>> 3d14e5a (2FA set up after sign up)
 }
 
 /// Result returned when attempting to log in.
@@ -56,15 +95,21 @@ class AuthLoginResult {
     required this.userId,
     required this.token,
     required this.refreshToken,
-    required this.requiresTwoFactor,
+    required this.requiresTwoFactorChallenge,
+    required this.requiresTwoFactorSetup,
     required this.availableMethods,
+    required this.showGlobalOnboarding,
+    required this.hasCompletedGlobalOnboarding,
   });
 
   final String userId;
   final String token;
   final String refreshToken;
-  final bool requiresTwoFactor;
+  final bool requiresTwoFactorChallenge;
+  final bool requiresTwoFactorSetup;
   final List<TwoFactorMethod> availableMethods;
+  final bool showGlobalOnboarding;
+  final bool hasCompletedGlobalOnboarding;
 }
 
 class AuthException implements Exception {
@@ -181,6 +226,7 @@ class AuthService {
 
   PendingTwoFactorSession? get pendingTwoFactorSession => _pendingSession;
 
+<<<<<<< HEAD
   Future<LoginMethod> loadPreferredLoginMethod() async {
     final cached = _cachedLoginMethod;
     if (cached != null) {
@@ -203,11 +249,19 @@ class AuthService {
           : _loginMethodPasswordValue,
     );
   }
+=======
+  String? get currentUserId => _currentSession?.userId;
+>>>>>>> 3d14e5a (2FA set up after sign up)
 
   /// Attempts to authenticate with the provided credentials.
   Future<AuthLoginResult> login({
     required String email,
     required String password,
+<<<<<<< HEAD
+=======
+    required bool rememberMe,
+    bool showGlobalOnboarding = false,
+>>>>>>> 3d14e5a (2FA set up after sign up)
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 450));
     if (email.isEmpty || password.isEmpty) {
@@ -219,6 +273,7 @@ class AuthService {
     final refreshToken = 'refresh-${email.hashCode}-${_random.nextInt(9999)}';
     final isDemoLogin = isDemoAccount(email: email, password: password);
     _currentUserIsDemo = isDemoLogin;
+<<<<<<< HEAD
     // Demo users are always forced through the two-factor flow so the demo can
     // showcase the complete experience before landing in the app.
     const methods = TwoFactorMethod.values;
@@ -228,16 +283,65 @@ class AuthService {
       token: token,
       refreshToken: refreshToken,
       availableMethods: methods,
+=======
+    final hasCompletedOnboarding =
+        await MockAuthApi.instance.hasCompletedGlobalOnboarding(userId: userId);
+    final hasTwoFactorEnabled =
+        await MockAuthApi.instance.hasTwoFactorEnabled(userId: userId);
+    const methods = TwoFactorMethod.values;
+    final requiresTwoFactorChallenge =
+        isDemoLogin || hasTwoFactorEnabled;
+    final requiresTwoFactorSetup =
+        !requiresTwoFactorChallenge && !showGlobalOnboarding;
+
+    if (requiresTwoFactorChallenge) {
+      _pendingSession = PendingTwoFactorSession(
+        email: email,
+        userId: userId,
+        token: token,
+        refreshToken: refreshToken,
+        rememberMe: rememberMe,
+        availableMethods: methods,
+        showOnboardingAfterSuccess: showGlobalOnboarding,
+        hasCompletedGlobalOnboarding: hasCompletedOnboarding,
+        flowType: TwoFactorFlowType.challenge,
+      );
+      return AuthLoginResult(
+        userId: userId,
+        token: token,
+        refreshToken: refreshToken,
+        requiresTwoFactorChallenge: true,
+        requiresTwoFactorSetup: false,
+        availableMethods: methods,
+        showGlobalOnboarding: showGlobalOnboarding,
+        hasCompletedGlobalOnboarding: hasCompletedOnboarding,
+      );
+    }
+    final session = AuthSession(
+      userId: userId,
+      token: token,
+      refreshToken: refreshToken,
+      rememberMe: rememberMe,
+      hasCompletedGlobalOnboarding: hasCompletedOnboarding,
+>>>>>>> 3d14e5a (2FA set up after sign up)
     );
     return AuthLoginResult(
       userId: userId,
       token: token,
       refreshToken: refreshToken,
+<<<<<<< HEAD
       requiresTwoFactor: true,
+=======
+      requiresTwoFactorChallenge: false,
+      requiresTwoFactorSetup: requiresTwoFactorSetup,
+>>>>>>> 3d14e5a (2FA set up after sign up)
       availableMethods: methods,
+      showGlobalOnboarding: showGlobalOnboarding,
+      hasCompletedGlobalOnboarding: hasCompletedOnboarding,
     );
   }
 
+<<<<<<< HEAD
   void markPendingGlobalOnboarding() {
     _pendingGlobalOnboarding = true;
   }
@@ -246,6 +350,28 @@ class AuthService {
     final pending = _pendingGlobalOnboarding;
     _pendingGlobalOnboarding = false;
     return pending;
+=======
+  /// Prepares a two-factor enrollment session for the current user.
+  Future<void> startTwoFactorSetup({
+    required String userId,
+    required String email,
+  }) async {
+    final currentSession = _currentSession;
+    final methods = TwoFactorMethod.values;
+    _pendingSession = PendingTwoFactorSession(
+      email: email,
+      userId: userId,
+      token: currentSession?.token ?? '',
+      refreshToken: currentSession?.refreshToken ?? '',
+      rememberMe: currentSession?.rememberMe ?? false,
+      availableMethods: methods,
+      showOnboardingAfterSuccess: false,
+      hasCompletedGlobalOnboarding:
+          currentSession?.hasCompletedGlobalOnboarding ?? false,
+      flowType: TwoFactorFlowType.enrollment,
+    );
+    _pendingCode = null;
+>>>>>>> 3d14e5a (2FA set up after sign up)
   }
 
   /// Generates or resends a 2FA code via the selected [method].
@@ -284,6 +410,7 @@ class AuthService {
       return false;
     }
 
+<<<<<<< HEAD
     return true;
   }
 
@@ -304,6 +431,25 @@ class AuthService {
     final session = await _loadStoredSession();
     if (session == null) return false;
     _currentSession = session;
+=======
+    if (pending.flowType == TwoFactorFlowType.challenge) {
+      final session = AuthSession(
+        userId: pending.userId,
+        token: pending.token,
+        refreshToken: pending.refreshToken,
+        rememberMe: pending.rememberMe,
+        hasCompletedGlobalOnboarding: pending.hasCompletedGlobalOnboarding,
+      );
+      _currentSession = session;
+      if (session.rememberMe) {
+        await _persistSession(session);
+      }
+    } else {
+      await MockAuthApi.instance.markTwoFactorEnabled(userId: pending.userId);
+    }
+    _pendingSession = null;
+    _pendingCode = null;
+>>>>>>> 3d14e5a (2FA set up after sign up)
     return true;
   }
 
@@ -324,10 +470,21 @@ class AuthService {
       return null;
     }
 
+<<<<<<< HEAD
     return AuthSession(
       userId: userId,
       token: token,
       refreshToken: refreshToken ?? '',
+=======
+    final hasCompletedOnboarding =
+        await MockAuthApi.instance.hasCompletedGlobalOnboarding(userId: userId);
+    _currentSession = AuthSession(
+      userId: userId,
+      token: token,
+      refreshToken: refreshToken ?? '',
+      rememberMe: true,
+      hasCompletedGlobalOnboarding: hasCompletedOnboarding,
+>>>>>>> 3d14e5a (2FA set up after sign up)
     );
   }
 
@@ -341,6 +498,7 @@ class AuthService {
     UserProfileStore.instance.clear();
   }
 
+<<<<<<< HEAD
   /// Enables biometric login for the current authenticated session.
   Future<bool> enableBiometricLogin() async {
     final session = _currentSession;
@@ -359,6 +517,15 @@ class AuthService {
   }
 
   /// Securely stores tokens and metadata so biometric login can continue later.
+=======
+  void markGlobalOnboardingCompleted() {
+    final current = _currentSession;
+    if (current == null) return;
+    _currentSession = current.copyWith(hasCompletedGlobalOnboarding: true);
+  }
+
+  /// Securely stores tokens and metadata so auto-login can restore the session.
+>>>>>>> 3d14e5a (2FA set up after sign up)
   Future<void> _persistSession(AuthSession session) async {
     final expiry = DateTime.now().add(const Duration(days: 7));
     await Future.wait([
