@@ -13,6 +13,9 @@ PODS:
   - just_audio (0.0.1):
     - Flutter
     - FlutterMacOS
+  - local_auth_darwin (0.0.1):
+    - Flutter
+    - FlutterMacOS
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -38,6 +41,7 @@ DEPENDENCIES:
   - flutter_tts (from `Flutter/ephemeral/.symlinks/plugins/flutter_tts/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
   - just_audio (from `Flutter/ephemeral/.symlinks/plugins/just_audio/darwin`)
+  - local_auth_darwin (from `Flutter/ephemeral/.symlinks/plugins/local_auth_darwin/darwin`)
   - path_provider_foundation (from `Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin`)
   - printing (from `Flutter/ephemeral/.symlinks/plugins/printing/macos`)
   - record_macos (from `Flutter/ephemeral/.symlinks/plugins/record_macos/macos`)
@@ -61,6 +65,8 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral
   just_audio:
     :path: Flutter/ephemeral/.symlinks/plugins/just_audio/darwin
+  local_auth_darwin:
+    :path: Flutter/ephemeral/.symlinks/plugins/local_auth_darwin/darwin
   path_provider_foundation:
     :path: Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin
   printing:
@@ -84,6 +90,7 @@ SPEC CHECKSUMS:
   flutter_tts: ae915565cc6948444b513acc8ee021993281e027
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   just_audio: 4e391f57b79cad2b0674030a00453ca5ce817eed
+  local_auth_darwin: d2e8c53ef0c4f43c646462e3415432c4dab3ae19
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
   printing: c4cf83c78fd684f9bc318e6aadc18972aa48f617
   record_macos: fcfa993538261e6fdb5b3ce08b82000be6ddec71
