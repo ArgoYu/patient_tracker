@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/routing/app_routes.dart';
@@ -27,6 +28,18 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
       AuthService.instance.pendingTwoFactorSession;
 
   bool get _isDemoUser => AuthService.instance.currentUserIsDemo;
+
+  String? get _codeHint {
+    if (_isDemoUser) {
+      return 'Demo accounts always require a second factor. Enter '
+          '$demoVerificationCode to proceed.';
+    }
+    if (kDebugMode) {
+      return 'Development builds skip real SMS/email delivery. Enter '
+          '$demoVerificationCode to continue.';
+    }
+    return null;
+  }
 
   @override
   void initState() {
@@ -145,6 +158,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
     final pending = _pending!;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final codeHint = _codeHint;
     return Scaffold(
       appBar: AppBar(title: const Text('Two-Factor Verification')),
       body: SafeArea(
@@ -164,15 +178,15 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
                     ?.copyWith(color: colorScheme.onBackground.withOpacity(0.7)),
               ),
               const SizedBox(height: 24),
-              if (_isDemoUser)
+              if (codeHint != null) ...[
                 Text(
-                  'Demo accounts always require a second factor. Enter '
-                  '$demoVerificationCode to proceed.',
+                  codeHint,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: colorScheme.primary,
                   ),
                 ),
-              if (_isDemoUser) const SizedBox(height: 12),
+                const SizedBox(height: 12),
+              ],
               Text(
                 'Choose how to receive your 6-digit code:',
                 style: theme.textTheme.bodyMedium,

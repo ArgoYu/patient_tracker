@@ -309,18 +309,13 @@ class AuthService {
       throw const AuthException('No pending verification available.');
     }
     await Future<void>.delayed(const Duration(milliseconds: 360));
-    if (_currentUserIsDemo) {
-      // The demo account always uses the fixed demo verification code (000000)
-      // for testing and demo flows only so the two-factor screen can show the
-      // complete experience without a backend call.
-      _pendingCode = demoVerificationCode;
-    } else {
-      _pendingCode = _generateCode();
-    }
+    final useFixedCode = kDebugMode || _currentUserIsDemo;
+    _pendingCode = useFixedCode ? demoVerificationCode : _generateCode();
     if (kDebugMode) {
+      final sourceLabel =
+          _currentUserIsDemo ? '(demo fixed code)' : '(dev fixed code)';
       debugPrint(
-        '2FA code for ${pending.email} via $method: $_pendingCode '
-        '${_currentUserIsDemo ? '(demo fixed code)' : ''}',
+        '2FA code for ${pending.email} via $method: $_pendingCode $sourceLabel',
       );
     }
   }

@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/routing/app_routes.dart';
 import '../../shared/prefs_keys.dart';
 import '../auth/auth_service.dart';
+import '../auth/demo_credentials.dart';
 
 class TwoFactorSetupScreen extends StatefulWidget {
   const TwoFactorSetupScreen({
@@ -182,6 +184,16 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
                       style: theme.textTheme.bodyMedium
                           ?.copyWith(color: colorScheme.onBackground.withOpacity(0.7)),
                     ),
+                    if (kDebugMode) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        'Development builds skip real SMS/email delivery. Enter '
+                        '$demoVerificationCode to finish setup.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                    ],
                     if (_emailForSetup != null) ...[
                       const SizedBox(height: 16),
                       Text(
