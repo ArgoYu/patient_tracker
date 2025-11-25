@@ -1,6 +1,8 @@
 // lib/app.dart
 import 'package:flutter/material.dart';
 
+import 'features/auth/auth_service.dart';
+import 'features/auth/auth_session_scope.dart';
 import 'shared/app_settings.dart';
 import 'core/routing/app_routes.dart';
 import 'core/theme/app_theme.dart';
@@ -47,16 +49,19 @@ class _AppRootState extends State<AppRoot> {
       onChangeDarkOpacity: (v) =>
           setState(() => _darkOpacity = v.clamp(0.0, 1.0)),
       onChangeBlurSigma: (v) => setState(() => _blurSigma = v.clamp(0.0, 60.0)),
-      child: MaterialApp(
-        title: 'Patient Tracker',
-        debugShowCheckedModeBanner: false,
-        themeMode: _mode,
-        theme: AppTheme.light(_seed),
-        darkTheme: AppTheme.dark(_seed),
-        initialRoute: widget.initialRoute,
-        routes: AppRoutes.routes,
-        builder: (context, child) =>
-            AppBackdrop(palette: pal, child: child ?? const SizedBox.shrink()),
+      child: AuthSessionScope(
+        notifier: AuthService.instance.currentUserAccountListenable,
+        child: MaterialApp(
+          title: 'Patient Tracker',
+          debugShowCheckedModeBanner: false,
+          themeMode: _mode,
+          theme: AppTheme.light(_seed),
+          darkTheme: AppTheme.dark(_seed),
+          initialRoute: widget.initialRoute,
+          routes: AppRoutes.routes,
+          builder: (context, child) =>
+              AppBackdrop(palette: pal, child: child ?? const SizedBox.shrink()),
+        ),
       ),
     );
   }

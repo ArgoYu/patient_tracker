@@ -26,6 +26,7 @@ class _AuthGatePageState extends State<AuthGatePage> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmController = TextEditingController();
   final TextEditingController _codeController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
 
   bool _isLogin = true;
   bool _busy = false;
@@ -43,6 +44,7 @@ class _AuthGatePageState extends State<AuthGatePage> {
     _passwordController.dispose();
     _confirmController.dispose();
     _codeController.dispose();
+    _nameController.dispose();
     _timer?.cancel();
     super.dispose();
   }
@@ -132,9 +134,10 @@ class _AuthGatePageState extends State<AuthGatePage> {
     }
     _timer?.cancel();
     setState(() {
-      _emailController.text = demoAuthEmail;
-      _passwordController.text = demoAuthPassword;
-      _confirmController.text = demoAuthPassword;
+      _emailController.text = demoEmail;
+      _passwordController.text = demoPassword;
+      _confirmController.text = demoPassword;
+      _nameController.text = demoUserAccount.displayName;
       _codeController.clear();
       _rememberMe = true;
       _codeSent = false;
@@ -148,6 +151,7 @@ class _AuthGatePageState extends State<AuthGatePage> {
     final password = _passwordController.text;
     final confirm = _confirmController.text;
     final code = _codeController.text.trim();
+    final displayName = _nameController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
       setState(() {
@@ -176,6 +180,12 @@ class _AuthGatePageState extends State<AuthGatePage> {
     if (!_isLogin && code.isEmpty) {
       setState(() {
         _error = 'Enter the verification code we sent to your email.';
+      });
+      return;
+    }
+    if (!_isLogin && displayName.isEmpty) {
+      setState(() {
+        _error = 'Enter a name so we can personalize your experience.';
       });
       return;
     }
@@ -212,6 +222,7 @@ class _AuthGatePageState extends State<AuthGatePage> {
         email: email,
         password: password,
         rememberMe: _rememberMe,
+        displayName: displayName,
         showGlobalOnboarding: true,
       );
       await _completeLogin(email, result);
@@ -353,6 +364,18 @@ class _AuthGatePageState extends State<AuthGatePage> {
                               prefixIcon: Icon(Icons.email_outlined),
                             ),
                           ),
+                          if (!_isLogin) ...[
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: _nameController,
+                              textCapitalization: TextCapitalization.words,
+                              autofillHints: const [AutofillHints.name],
+                              decoration: const InputDecoration(
+                                labelText: 'Name',
+                                prefixIcon: Icon(Icons.person_outline),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 12),
                           TextField(
                             controller: _passwordController,

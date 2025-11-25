@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'demo_credentials.dart';
+import 'user_identity.dart';
 
 /// A lightweight stub for sending and verifying email codes.
 ///
@@ -87,7 +88,7 @@ class MockAuthApi {
     return List.generate(6, (_) => _random.nextInt(10)).join();
   }
 
-  String _userIdForEmail(String email) => 'user-${email.hashCode}';
+  String _userIdForEmail(String email) => UserIdentity.idForEmail(email);
 }
 
 class _CodeState {

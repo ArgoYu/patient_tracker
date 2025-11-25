@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../auth/auth_session_scope.dart';
 import '../../../data/models/models.dart';
 import '../../../shared/app_settings.dart';
 import '../../../shared/widgets/glass.dart';
@@ -137,10 +138,11 @@ class _PatientHomePageState extends State<PatientHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final name = widget.profile.name.split(' ').first;
+    final userAccount = AuthSessionScope.of(context).currentUserAccount;
+    final greetingName = userAccount?.displayName ?? 'Guest';
     return Scaffold(
       appBar: AppBar(
-        title: Text('${_greeting()}, $name'),
+        title: Text('${_greeting()}, $greetingName'),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -164,6 +166,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
             child: PatientInfoHeader(
               profile: widget.profile,
               onOpenProfile: widget.onOpenProfile,
+              displayName: greetingName,
               symptoms: widget.profile.notes,
               primaryDoctor: widget.nextVisit.doctor,
             ),
@@ -214,12 +217,14 @@ class PatientInfoHeader extends StatefulWidget {
     required this.onOpenProfile,
     this.symptoms,
     this.primaryDoctor,
+    this.displayName,
   });
 
   final PatientProfile profile;
   final VoidCallback onOpenProfile;
   final String? symptoms;
   final String? primaryDoctor;
+  final String? displayName;
 
   @override
   State<PatientInfoHeader> createState() => _PatientInfoHeaderState();
@@ -254,6 +259,13 @@ class _PatientInfoHeaderState extends State<PatientInfoHeader>
       return widget.profile.notes?.trim() ?? '';
     }();
     final doctor = widget.primaryDoctor?.trim() ?? '';
+    final headerName = () {
+      final override = widget.displayName?.trim();
+      if (override?.isNotEmpty ?? false) {
+        return override!;
+      }
+      return widget.profile.name;
+    }();
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -278,7 +290,7 @@ class _PatientInfoHeaderState extends State<PatientInfoHeader>
               child: Column(
                 children: [
                   Text(
-                    widget.profile.name,
+                    headerName,
                     style: text.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
