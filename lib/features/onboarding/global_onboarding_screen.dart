@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/routing/app_routes.dart';
+import '../auth/auth_service.dart';
+import '../auth/mock_auth_api.dart';
+import '../auth/two_factor_setup_screen.dart';
+import '../user/mock_user_api.dart';
 import '../../shared/language_preferences.dart';
+<<<<<<< HEAD:lib/features/onboarding/onboarding_page.dart
 import '../auth/user_profile_store.dart';
 
 class OnboardingFlowArguments {
@@ -15,18 +20,56 @@ class OnboardingFlowArguments {
   final bool replay;
   final String? userId;
   final String? afterOnboardingRoute;
+=======
+import '../../shared/prefs_keys.dart';
+
+const _pronounOptions = [
+  'She/her',
+  'He/him',
+  'They/them',
+  'Prefer not to say',
+];
+
+const _timeZoneOptions = [
+  'Pacific Time (US & Canada)',
+  'Mountain Time (US & Canada)',
+  'Central Time (US & Canada)',
+  'Eastern Time (US & Canada)',
+  'UTC',
+];
+
+class GlobalOnboardingFlowArguments {
+  const GlobalOnboardingFlowArguments({
+    this.replay = false,
+    this.userId,
+    this.isNewlyRegistered = false,
+  });
+
+  final bool replay;
+  final String? userId;
+  final bool isNewlyRegistered;
+>>>>>>> 3d14e5a (2FA set up after sign up):lib/features/onboarding/global_onboarding_screen.dart
 }
 
-class OnboardingPage extends StatefulWidget {
-  const OnboardingPage({super.key});
+class GlobalOnboardingScreen extends StatefulWidget {
+  const GlobalOnboardingScreen({
+    super.key,
+    required this.userId,
+    this.replay = false,
+    this.isNewlyRegistered = false,
+  });
 
-  static const routeName = '/onboarding';
+  static const routeName = '/global-onboarding';
+
+  final String userId;
+  final bool replay;
+  final bool isNewlyRegistered;
 
   @override
-  State<OnboardingPage> createState() => _OnboardingPageState();
+  State<GlobalOnboardingScreen> createState() => _GlobalOnboardingScreenState();
 }
 
-class _OnboardingPageState extends State<OnboardingPage> {
+class _GlobalOnboardingScreenState extends State<GlobalOnboardingScreen> {
   final PageController _controller = PageController();
   int _index = 0;
   bool micGranted = false;
@@ -40,6 +83,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
   bool _highlightMeds = true;
   String _preferredLanguageCode =
       LanguagePreferences.fallbackLanguageCode;
+  final TextEditingController _preferredNameController = TextEditingController();
+  String? _selectedPronouns;
+  String? _selectedTimeZone;
+  bool _isSavingProfile = false;
+  String? _personalInfoError;
 
   @override
   void initState() {
@@ -50,6 +98,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   @override
   void dispose() {
     _controller.dispose();
+    _preferredNameController.dispose();
     super.dispose();
   }
 
@@ -75,9 +124,29 @@ class _OnboardingPageState extends State<OnboardingPage> {
     }
   }
 
+<<<<<<< HEAD:lib/features/onboarding/onboarding_page.dart
   Future<void> _finish() async {
     final args = _resolveFlowArguments();
     if (!consentChecked && !args.replay) {
+=======
+  Future<String?> _persistOnboardingState() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      PrefsKeys.preferredLanguageCode,
+      _preferredLanguageCode,
+    );
+    await LanguagePreferences.savePreferredTimeZone(_selectedTimeZone);
+    await MockAuthApi.instance.setGlobalOnboardingCompleted(userId: widget.userId);
+    AuthService.instance.markGlobalOnboardingCompleted();
+    return prefs.getString(PrefsKeys.authEmail);
+  }
+
+  Future<void> _completeOnboarding({
+    Future<void> Function(String? authEmail)? onComplete,
+  }) async {
+    final isReplay = widget.replay;
+    if (!consentChecked && !isReplay) {
+>>>>>>> 3d14e5a (2FA set up after sign up):lib/features/onboarding/global_onboarding_screen.dart
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -91,6 +160,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
       Navigator.of(context).pop();
       return;
     }
+<<<<<<< HEAD:lib/features/onboarding/onboarding_page.dart
     await LanguagePreferences.savePreferredLanguageCode(_preferredLanguageCode);
     if (args.userId != null) {
       await UserProfileStore.instance
@@ -115,6 +185,63 @@ class _OnboardingPageState extends State<OnboardingPage> {
       );
     }
     return const OnboardingFlowArguments();
+=======
+    final authEmail = await _persistOnboardingState();
+    if (!mounted) return;
+    if (onComplete != null) {
+      await onComplete(authEmail);
+      return;
+    }
+    Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+  }
+
+  Future<void> _savePersonalInfo() async {
+    final preferredName = _preferredNameController.text.trim();
+    if (preferredName.isEmpty) {
+      setState(() {
+        _personalInfoError = 'Enter a preferred name to continue.';
+      });
+      return;
+    }
+    setState(() {
+      _isSavingProfile = true;
+      _personalInfoError = null;
+    });
+    try {
+      await MockUserApi.instance.updateProfile(
+        userId: widget.userId,
+        preferredName: preferredName,
+        preferredLanguage: _preferredLanguageCode,
+        pronouns: _selectedPronouns,
+        timeZone: _selectedTimeZone,
+      );
+      await _completeOnboarding(
+        onComplete: (authEmail) async {
+          if (!mounted) return;
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => TwoFactorSetupScreen(
+                userId: widget.userId,
+                email: authEmail,
+              ),
+            ),
+          );
+        },
+      );
+      return;
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _personalInfoError =
+            'Unable to save your personal info. Please try again.';
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isSavingProfile = false;
+      });
+    }
+>>>>>>> 3d14e5a (2FA set up after sign up):lib/features/onboarding/global_onboarding_screen.dart
   }
 
   @override
@@ -194,15 +321,31 @@ class _OnboardingPageState extends State<OnboardingPage> {
               setState(() => _highlightMeds = value),
         ),
       ),
+    ];
+    final finalIndex = pages.length;
+    pages.add(
       _AnimatedOnboardingPane(
-        index: 6,
+        index: finalIndex,
         currentIndex: _index,
         reduceMotion: _reduceMotion,
-        child: _Ready(
-          onFinish: _finish,
-        ),
+        child: widget.replay
+            ? _Ready(onFinish: _completeOnboarding)
+            : _PersonalInformation(
+                preferredNameController: _preferredNameController,
+                selectedLanguage: _preferredLanguageCode,
+                onLanguageChanged: _onLanguageChanged,
+                selectedPronouns: _selectedPronouns,
+                onPronounsChanged: (value) =>
+                    setState(() => _selectedPronouns = value),
+                selectedTimeZone: _selectedTimeZone,
+                onTimeZoneChanged: (value) =>
+                    setState(() => _selectedTimeZone = value),
+                isSaving: _isSavingProfile,
+                errorMessage: _personalInfoError,
+                onSave: _savePersonalInfo,
+              ),
       ),
-    ];
+    );
 
     return Scaffold(
       backgroundColor: colorScheme.background,
@@ -231,30 +374,22 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       child: const Text('Previous'),
                     ),
                   const Spacer(),
-                  Semantics(
-                    button: true,
-                    label: _index == pages.length - 1
-                        ? 'Finish onboarding'
-                        : 'Next onboarding step',
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colorScheme.primary,
-                        foregroundColor: colorScheme.onPrimary,
+                  if (_index < pages.length - 1)
+                    Semantics(
+                      button: true,
+                      label: 'Next onboarding step',
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colorScheme.primary,
+                          foregroundColor: colorScheme.onPrimary,
+                        ),
+                        onPressed: () => _controller.nextPage(
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOutCubic,
+                        ),
+                        child: const Text('Next'),
                       ),
-                      onPressed: () {
-                        if (_index == pages.length - 1) {
-                          _finish();
-                        } else {
-                          _controller.nextPage(
-                            duration: const Duration(milliseconds: 220),
-                            curve: Curves.easeOutCubic,
-                          );
-                        }
-                      },
-                      child:
-                          Text(_index == pages.length - 1 ? 'Finish' : 'Next'),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -642,6 +777,128 @@ class _Ready extends StatelessWidget {
         _CardAction(
           label: 'Go to Home',
           onTap: onFinish,
+        ),
+      ],
+    );
+  }
+}
+
+class _PersonalInformation extends StatelessWidget {
+  const _PersonalInformation({
+    required this.preferredNameController,
+    required this.selectedLanguage,
+    required this.onLanguageChanged,
+    required this.selectedPronouns,
+    required this.onPronounsChanged,
+    required this.selectedTimeZone,
+    required this.onTimeZoneChanged,
+    required this.onSave,
+    required this.isSaving,
+    this.errorMessage,
+  });
+
+  final TextEditingController preferredNameController;
+  final String selectedLanguage;
+  final ValueChanged<String> onLanguageChanged;
+  final String? selectedPronouns;
+  final ValueChanged<String?> onPronounsChanged;
+  final String? selectedTimeZone;
+  final ValueChanged<String?> onTimeZoneChanged;
+  final VoidCallback onSave;
+  final bool isSaving;
+  final String? errorMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return _OnboardingCard(
+      title: 'Tell us a bit about you',
+      subtitle: 'This helps us personalize messages and defaults.',
+      children: [
+        TextField(
+          controller: preferredNameController,
+          textInputAction: TextInputAction.next,
+          decoration: const InputDecoration(
+            labelText: 'Preferred name',
+            prefixIcon: Icon(Icons.person_outline),
+          ),
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          value: selectedLanguage,
+          decoration: const InputDecoration(
+            labelText: 'Preferred language',
+          ),
+          isExpanded: true,
+          items: LanguagePreferences.supportedLanguages
+              .map(
+                (lang) => DropdownMenuItem(
+                  value: lang.code,
+                  child: Text(lang.label),
+                ),
+              )
+              .toList(),
+          onChanged: (value) {
+            if (value != null) {
+              onLanguageChanged(value);
+            }
+          },
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          value: selectedPronouns,
+          decoration: InputDecoration(
+            labelText: 'Pronouns (optional)',
+            border: const OutlineInputBorder(),
+          ),
+          isExpanded: true,
+          hint: const Text('Select'),
+          items: _pronounOptions
+              .map(
+                (option) => DropdownMenuItem(
+                  value: option,
+                  child: Text(option),
+                ),
+              )
+              .toList(),
+          onChanged: onPronounsChanged,
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          value: selectedTimeZone,
+          decoration: InputDecoration(
+            labelText: 'Time zone / region (optional)',
+            border: const OutlineInputBorder(),
+          ),
+          isExpanded: true,
+          hint: const Text('Select'),
+          items: _timeZoneOptions
+              .map(
+                (option) => DropdownMenuItem(
+                  value: option,
+                  child: Text(option),
+                ),
+              )
+              .toList(),
+          onChanged: onTimeZoneChanged,
+        ),
+        if (errorMessage != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            errorMessage!,
+            style: TextStyle(color: colorScheme.error),
+          ),
+        ],
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: isSaving ? null : onSave,
+          child: isSaving
+              ? const SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Save and continue'),
         ),
       ],
     );

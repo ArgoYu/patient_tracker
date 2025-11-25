@@ -15,6 +15,8 @@ class MockAuthApi {
 
   final Map<String, _CodeState> _codes = {};
   final Random _random = Random();
+  final Map<String, bool> _onboardingCompleted = {};
+  final Map<String, bool> _twoFactorEnabled = {};
 
   Future<String> sendEmailCode(String email) async {
     await Future<void>.delayed(const Duration(milliseconds: 450));
@@ -50,13 +52,49 @@ class MockAuthApi {
     await Future<void>.delayed(const Duration(milliseconds: 400));
     // In a real implementation we would persist the user and return tokens.
     _codes.remove(email);
+<<<<<<< HEAD
     final userId = UserIdentity.idForEmail(email);
     await MockUserProfileApi.instance.registerUser(userId);
+=======
+    final userId = _userIdForEmail(email);
+    _onboardingCompleted[userId] = false;
+    _twoFactorEnabled[userId] = false;
+  }
+
+  Future<bool> hasCompletedGlobalOnboarding({
+    required String userId,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    return _onboardingCompleted[userId] ?? true;
+  }
+
+  Future<void> setGlobalOnboardingCompleted({
+    required String userId,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    _onboardingCompleted[userId] = true;
+  }
+
+  Future<bool> hasTwoFactorEnabled({
+    required String userId,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    return _twoFactorEnabled[userId] ?? true;
+  }
+
+  Future<void> markTwoFactorEnabled({
+    required String userId,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    _twoFactorEnabled[userId] = true;
+>>>>>>> 3d14e5a (2FA set up after sign up)
   }
 
   String _generateCode() {
     return List.generate(6, (_) => _random.nextInt(10)).join();
   }
+
+  String _userIdForEmail(String email) => 'user-${email.hashCode}';
 }
 
 class _CodeState {

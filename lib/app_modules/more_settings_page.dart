@@ -480,8 +480,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   title: const Text('Replay onboarding'),
                   subtitle: const Text('Show the app-wide intro again'),
                   onTap: () => Navigator.of(context).pushNamed(
-                    AppRoutes.onboarding,
-                    arguments: {'replay': true},
+                    AppRoutes.globalOnboarding,
+                    arguments: const GlobalOnboardingFlowArguments(replay: true),
                   ),
                   trailing: const Icon(Icons.chevron_right),
                 ),

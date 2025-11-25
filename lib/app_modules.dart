@@ -51,7 +51,11 @@ import 'features/voice_chat/voice_chat_page.dart';
 import 'features/ask_ai_doctor/chat_screen.dart';
 import 'features/auth/auth_gate_page.dart';
 import 'features/auth/auth_repository.dart';
+<<<<<<< HEAD
 import 'features/auth/auth_service.dart';
+=======
+import 'features/onboarding/global_onboarding_screen.dart';
+>>>>>>> 3d14e5a (2FA set up after sign up)
 import 'shared/app_settings.dart';
 import 'shared/language_preferences.dart';
 import 'shared/utils/toast.dart';

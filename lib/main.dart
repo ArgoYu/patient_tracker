@@ -6,9 +6,15 @@ import 'dart:ui' as ui show KeyData, KeyEventType;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+<<<<<<< HEAD
 
 import 'app.dart';
 import 'core/routing/app_routes.dart';
+=======
+import 'app.dart';
+import 'core/routing/app_routes.dart';
+import 'features/auth/auth_service.dart';
+>>>>>>> 3d14e5a (2FA set up after sign up)
 import 'features/voice_chat/services/voice_ai_http_service.dart';
 import 'features/voice_chat/services/voice_ai_service.dart';
 import 'features/voice_chat/services/voice_ai_service_registry.dart';
@@ -20,7 +26,13 @@ Future<void> main() async {
   _configureVoiceChatService();
 
   await Hive.initFlutter();
+<<<<<<< HEAD
   runApp(const AppRoot(initialRoute: AppRoutes.auth));
+=======
+  final remembered = await AuthService.instance.tryAutoLogin();
+  final initialRoute = remembered ? AppRoutes.home : AppRoutes.auth;
+  runApp(AppRoot(initialRoute: initialRoute));
+>>>>>>> 3d14e5a (2FA set up after sign up)
 }
 
 void _configureVoiceChatService() {

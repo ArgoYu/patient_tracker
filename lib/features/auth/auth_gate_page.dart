@@ -8,9 +8,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/routing/app_routes.dart';
 import '../../shared/prefs_keys.dart';
+import '../onboarding/global_onboarding_screen.dart';
 import 'demo_credentials.dart';
 import 'mock_auth_api.dart';
 import 'auth_service.dart';
+import 'two_factor_setup_screen.dart';
 
 class AuthGatePage extends StatefulWidget {
   const AuthGatePage({super.key});
@@ -308,6 +310,11 @@ class _AuthGatePageState extends State<AuthGatePage> {
       final result = await AuthService.instance.login(
         email: email,
         password: password,
+<<<<<<< HEAD
+=======
+        rememberMe: _rememberMe,
+        showGlobalOnboarding: true,
+>>>>>>> 3d14e5a (2FA set up after sign up)
       );
       await _completeLogin(email, result);
       return;
@@ -335,10 +342,35 @@ class _AuthGatePageState extends State<AuthGatePage> {
     await prefs.setBool(PrefsKeys.emailVerified, true);
     await prefs.setString(PrefsKeys.authEmail, email);
 
-    if (result.requiresTwoFactor) {
+    if (result.requiresTwoFactorChallenge) {
       if (!mounted) return;
-      // Backend requires a second factor before allowing access to the main app.
       Navigator.of(context).pushNamed(AppRoutes.twoFactor);
+      return;
+    }
+
+    if (result.requiresTwoFactorSetup) {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => TwoFactorSetupScreen(
+            userId: result.userId,
+            email: email,
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (result.showGlobalOnboarding) {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => GlobalOnboardingScreen(
+            userId: result.userId,
+            isNewlyRegistered: result.showGlobalOnboarding,
+          ),
+        ),
+      );
       return;
     }
 
