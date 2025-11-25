@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../shared/prefs_keys.dart';
 import 'demo_credentials.dart';
 import 'mock_auth_api.dart';
-import 'user_account.dart';
+import 'user_account.dart' hide isDemoAccount;
 import 'user_identity.dart';
 
 enum TwoFactorMethod {
