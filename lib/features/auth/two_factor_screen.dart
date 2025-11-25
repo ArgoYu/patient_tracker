@@ -1,15 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../core/routing/app_routes.dart';
-<<<<<<< HEAD
-import '../onboarding/onboarding_page.dart';
-=======
 import '../onboarding/global_onboarding_screen.dart';
->>>>>>> 3d14e5a (2FA set up after sign up)
 import 'auth_service.dart';
 import 'demo_credentials.dart';
-import 'two_factor_success_screen.dart';
-import 'user_profile_store.dart';
 
 class TwoFactorScreen extends StatefulWidget {
   const TwoFactorScreen({super.key});
@@ -78,11 +72,8 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
   }
 
   Future<void> _verifyCode() async {
-<<<<<<< HEAD
-=======
     final pending = _pending;
     if (pending == null) return;
->>>>>>> 3d14e5a (2FA set up after sign up)
     final code = _codeController.text.trim();
     if (code.isEmpty) {
       setState(() {
@@ -90,50 +81,14 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
       });
       return;
     }
-
     setState(() {
       _isVerifying = true;
       _error = null;
     });
-
-    try {
-      final success = await AuthService.instance.verifyTwoFactorCode(code);
-      if (!success) {
-        _showInvalidCodeError();
-        return;
-      }
-
-      final pending = _pending;
-      if (pending == null) {
-        _handleMissingPendingSession();
-        return;
-      }
-
-      await AuthService.instance.finishTwoFactorLogin(pending);
-      await UserProfileStore.instance.loadProfile(pending.userId);
-
-      final showOnboarding =
-          AuthService.instance.consumePendingGlobalOnboarding();
-      final nextRoute =
-          showOnboarding ? AppRoutes.onboarding : AppRoutes.postLogin;
-      final nextRouteArguments = showOnboarding
-          ? OnboardingFlowArguments(
-              userId: pending.userId,
-              afterOnboardingRoute: AppRoutes.postLogin,
-            )
-          : null;
-
+    // 2FA is required by the backend, so only this path lets the user finish login.
+    final success = await AuthService.instance.verifyTwoFactorCode(code);
+    if (success) {
       if (!mounted) return;
-<<<<<<< HEAD
-      await Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          transitionDuration: const Duration(milliseconds: 800),
-          pageBuilder: (_, __, ___) => TwoFactorSuccessScreen(
-            nextRoute: nextRoute,
-            nextRouteArguments: nextRouteArguments,
-          ),
-        ),
-=======
       if (pending.showOnboardingAfterSuccess) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
@@ -148,33 +103,18 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
       Navigator.of(context).pushNamedAndRemoveUntil(
         AppRoutes.home,
         (route) => false,
->>>>>>> 3d14e5a (2FA set up after sign up)
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isVerifying = false;
-        });
-      }
+      return;
     }
-  }
-
-  void _showInvalidCodeError() {
+    if (mounted) {
+      setState(() {
+        _error = 'The code is incorrect or expired. Please try again.';
+      });
+    }
     if (!mounted) return;
     setState(() {
-      _error = 'The code is incorrect or expired. Please try again.';
+      _isVerifying = false;
     });
-  }
-
-  void _handleMissingPendingSession() {
-    debugPrint('TwoFactorScreen: _pending is null after 2FA success.');
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Something went wrong. Please sign in again.'),
-      ),
-    );
-    Navigator.of(context).pop();
   }
 
   String _methodLabel(TwoFactorMethod method) {
@@ -190,8 +130,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final pending = _pending;
-    if (pending == null) {
+    if (_pending == null) {
       // Guard against deep links arriving here without a pending two-factor state.
       return Scaffold(
         appBar: AppBar(title: const Text('Two-Factor Verification')),
@@ -203,6 +142,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
         ),
       );
     }
+    final pending = _pending!;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     return Scaffold(
@@ -220,8 +160,8 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
               const SizedBox(height: 12),
               Text(
                 'We need one more proof of identity before giving you access.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurface.withOpacity(0.7)),
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: colorScheme.onBackground.withOpacity(0.7)),
               ),
               const SizedBox(height: 24),
               if (_isDemoUser)
@@ -241,13 +181,11 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
               DropdownButton<TwoFactorMethod>(
                 value: _selectedMethod,
                 isExpanded: true,
-                onChanged: _isRequestingCode
-                    ? null
-                    : (value) {
-                        setState(() {
-                          _selectedMethod = value;
-                        });
-                      },
+                onChanged: _isRequestingCode ? null : (value) {
+                  setState(() {
+                    _selectedMethod = value;
+                  });
+                },
                 items: pending.availableMethods
                     .map(
                       (method) => DropdownMenuItem(
@@ -270,14 +208,14 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
               if (_error != null)
                 Text(
                   _error!,
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: colorScheme.error),
+                  style:
+                      theme.textTheme.bodyMedium?.copyWith(color: colorScheme.error),
                 ),
               if (_statusMessage != null)
                 Text(
                   _statusMessage!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurface.withOpacity(0.7)),
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: colorScheme.onBackground.withOpacity(0.7)),
                 ),
               const SizedBox(height: 16),
               Row(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/routing/app_routes.dart';
 import '../auth/auth_service.dart';
@@ -7,20 +8,6 @@ import '../auth/mock_auth_api.dart';
 import '../auth/two_factor_setup_screen.dart';
 import '../user/mock_user_api.dart';
 import '../../shared/language_preferences.dart';
-<<<<<<< HEAD:lib/features/onboarding/onboarding_page.dart
-import '../auth/user_profile_store.dart';
-
-class OnboardingFlowArguments {
-  const OnboardingFlowArguments({
-    this.replay = false,
-    this.userId,
-    this.afterOnboardingRoute,
-  });
-
-  final bool replay;
-  final String? userId;
-  final String? afterOnboardingRoute;
-=======
 import '../../shared/prefs_keys.dart';
 
 const _pronounOptions = [
@@ -48,7 +35,6 @@ class GlobalOnboardingFlowArguments {
   final bool replay;
   final String? userId;
   final bool isNewlyRegistered;
->>>>>>> 3d14e5a (2FA set up after sign up):lib/features/onboarding/global_onboarding_screen.dart
 }
 
 class GlobalOnboardingScreen extends StatefulWidget {
@@ -124,11 +110,6 @@ class _GlobalOnboardingScreenState extends State<GlobalOnboardingScreen> {
     }
   }
 
-<<<<<<< HEAD:lib/features/onboarding/onboarding_page.dart
-  Future<void> _finish() async {
-    final args = _resolveFlowArguments();
-    if (!consentChecked && !args.replay) {
-=======
   Future<String?> _persistOnboardingState() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
@@ -146,7 +127,6 @@ class _GlobalOnboardingScreenState extends State<GlobalOnboardingScreen> {
   }) async {
     final isReplay = widget.replay;
     if (!consentChecked && !isReplay) {
->>>>>>> 3d14e5a (2FA set up after sign up):lib/features/onboarding/global_onboarding_screen.dart
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -155,37 +135,11 @@ class _GlobalOnboardingScreenState extends State<GlobalOnboardingScreen> {
       );
       return;
     }
-    if (args.replay) {
+    if (isReplay) {
       if (!mounted) return;
       Navigator.of(context).pop();
       return;
     }
-<<<<<<< HEAD:lib/features/onboarding/onboarding_page.dart
-    await LanguagePreferences.savePreferredLanguageCode(_preferredLanguageCode);
-    if (args.userId != null) {
-      await UserProfileStore.instance
-          .markGlobalOnboardingComplete(args.userId!);
-    }
-    if (!mounted) return;
-    final destination = args.afterOnboardingRoute ?? AppRoutes.home;
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      destination,
-      (route) => false,
-    );
-  }
-
-  OnboardingFlowArguments _resolveFlowArguments() {
-    final modalArgs = ModalRoute.of(context)?.settings.arguments;
-    if (modalArgs is OnboardingFlowArguments) return modalArgs;
-    if (modalArgs is Map) {
-      return OnboardingFlowArguments(
-        replay: modalArgs['replay'] == true,
-        userId: modalArgs['userId'] as String?,
-        afterOnboardingRoute: modalArgs['afterRoute'] as String?,
-      );
-    }
-    return const OnboardingFlowArguments();
-=======
     final authEmail = await _persistOnboardingState();
     if (!mounted) return;
     if (onComplete != null) {
@@ -241,7 +195,6 @@ class _GlobalOnboardingScreenState extends State<GlobalOnboardingScreen> {
         _isSavingProfile = false;
       });
     }
->>>>>>> 3d14e5a (2FA set up after sign up):lib/features/onboarding/global_onboarding_screen.dart
   }
 
   @override

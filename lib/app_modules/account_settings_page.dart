@@ -17,17 +17,11 @@ class AccountSettingsPage extends StatefulWidget {
 class _AccountSettingsPageState extends State<AccountSettingsPage> {
   late PatientProfile _profile;
   bool _signingOut = false;
-  final LocalAuthentication _localAuth = LocalAuthentication();
-  LoginMethod _selectedLoginMethod = LoginMethod.password2fa;
-  bool _biometricSupported = false;
-  bool _updatingLoginMethod = false;
-  String? _loginMethodError;
 
   @override
   void initState() {
     super.initState();
     _profile = widget.profile;
-    _loadLoginMethod();
   }
 
   Future<void> _openChangePassword() async {
@@ -54,91 +48,6 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(builder: (_) => const NotificationPreferencesPage()),
     );
-  }
-
-  Future<void> _loadLoginMethod() async {
-    try {
-      final method = await AuthService.instance.loadPreferredLoginMethod();
-      final canCheck = await _localAuth.canCheckBiometrics;
-      final available = await _localAuth.getAvailableBiometrics();
-      if (!mounted) return;
-      setState(() {
-        _selectedLoginMethod = method;
-        _biometricSupported = canCheck && available.isNotEmpty;
-      });
-    } on PlatformException {
-      if (!mounted) return;
-      setState(() {
-        _biometricSupported = false;
-      });
-    }
-  }
-
-  Future<void> _changeLoginPreference(LoginMethod method) async {
-    if (_updatingLoginMethod || method == _selectedLoginMethod) {
-      return;
-    }
-    final previous = _selectedLoginMethod;
-    setState(() {
-      _updatingLoginMethod = true;
-      _loginMethodError = null;
-    });
-    try {
-      if (method == LoginMethod.biometrics) {
-        if (!_biometricSupported) {
-          throw const AuthException('Biometrics are not available on this device.');
-        }
-        final authenticated = await _localAuth.authenticate(
-          localizedReason: 'Confirm to enable Face ID / fingerprint logins.',
-          options: const AuthenticationOptions(biometricOnly: true),
-        );
-        if (!authenticated) {
-          throw const AuthException('Biometric confirmation was canceled.');
-        }
-        final enabled = await AuthService.instance.enableBiometricLogin();
-        if (!enabled) {
-          throw const AuthException('Unable to store biometric data right now.');
-        }
-        if (mounted) {
-          showToast(context, 'Biometric login enabled on this device.');
-        }
-      } else {
-        await AuthService.instance.disableBiometricLogin();
-        if (mounted) {
-          showToast(context, 'Password + 2FA will be required next time.');
-        }
-      }
-      if (!mounted) return;
-      setState(() {
-        _selectedLoginMethod = method;
-      });
-    } on PlatformException catch (e) {
-      if (mounted) {
-        setState(() {
-          _loginMethodError =
-              e.message ?? 'Unable to update sign-in preferences right now.';
-          _selectedLoginMethod = previous;
-        });
-      }
-    } on AuthException catch (e) {
-      if (mounted) {
-        setState(() {
-          _loginMethodError = e.message;
-          _selectedLoginMethod = previous;
-        });
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          _loginMethodError = 'Unable to update sign-in preferences right now.';
-          _selectedLoginMethod = previous;
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _updatingLoginMethod = false);
-      }
-    }
   }
 
   Future<void> _openPrivacy() async {
@@ -232,7 +141,7 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
             child: ListTile(
               leading: CircleAvatar(
                 radius: 24,
-                backgroundImage: hasAvatar ? NetworkImage(avatarUrl) : null,
+                backgroundImage: hasAvatar ? NetworkImage(avatarUrl!) : null,
                 child: hasAvatar ? null : const Icon(Icons.person, size: 28),
               ),
               title: Text(_profile.name, style: text.titleMedium),
@@ -272,54 +181,6 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: _openNotificationPreferences,
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          const _SectionLabel('Sign-in method'),
-          Glass(
-            child: Column(
-              children: [
-                RadioListTile<LoginMethod>(
-                  title: const Text('Password + 2FA every time'),
-                  subtitle: const Text('Enter your password and 2FA on each login.'),
-                  value: LoginMethod.password2fa,
-                  groupValue: _selectedLoginMethod,
-                  onChanged: _updatingLoginMethod
-                      ? null
-                      : (_) => _changeLoginPreference(LoginMethod.password2fa),
-                ),
-                const Divider(height: 0),
-                RadioListTile<LoginMethod>(
-                  title: const Text('Biometrics on this device (Face ID / Fingerprint)'),
-                  subtitle: Text(
-                    _biometricSupported
-                        ? 'Use Face ID / fingerprint instead of typing your password and 2FA.'
-                        : 'Biometrics are not available on this device.',
-                  ),
-                  value: LoginMethod.biometrics,
-                  groupValue: _selectedLoginMethod,
-                  onChanged: (_biometricSupported && !_updatingLoginMethod)
-                      ? (_) => _changeLoginPreference(LoginMethod.biometrics)
-                      : null,
-                ),
-                if (_loginMethodError != null) ...[
-                  const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      _loginMethodError!,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.error,
-                      ),
-                    ),
-                  ),
-                ],
-                if (_updatingLoginMethod)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: LinearProgressIndicator(),
-                  ),
               ],
             ),
           ),

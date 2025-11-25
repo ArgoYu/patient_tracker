@@ -10,11 +10,6 @@ import '../../features/voice_chat/voice_chat_page.dart';
 import '../../features/interpret/view/interpret_page.dart';
 import '../../features/ask_ai_doctor/chat_screen.dart';
 import '../../features/timeline/timeline_page.dart';
-<<<<<<< HEAD
-import '../../features/auth/auth_gate_page.dart';
-import '../../features/auth/biometric_opt_in_page.dart';
-=======
->>>>>>> 3d14e5a (2FA set up after sign up)
 import '../../features/auth/two_factor_screen.dart';
 
 /// Central place for route names and builders.
@@ -36,7 +31,6 @@ class AppRoutes {
   static const String askAiDoctorChat = AskAiDoctorChatScreen.routeName;
   static const String timelinePlanner = '/timeline-planner';
   static const String twoFactor = TwoFactorScreen.routeName;
-  static const String postLogin = BiometricOptInScreen.routeName;
 
   static Map<String, WidgetBuilder> routes = {
     globalOnboarding: (context) {
@@ -69,6 +63,5 @@ class AppRoutes {
     timelinePlanner: (_) => const TimelinePlannerPage(),
     ...MyAiPage.routes,
     twoFactor: (_) => const TwoFactorScreen(),
-    postLogin: (_) => const BiometricOptInScreen(),
   };
 }

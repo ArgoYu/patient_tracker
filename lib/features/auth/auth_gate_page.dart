@@ -2,8 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/routing/app_routes.dart';
@@ -29,8 +27,6 @@ class _AuthGatePageState extends State<AuthGatePage> {
   final TextEditingController _confirmController = TextEditingController();
   final TextEditingController _codeController = TextEditingController();
 
-  final LocalAuthentication _localAuth = LocalAuthentication();
-
   bool _isLogin = true;
   bool _busy = false;
   bool _sendingCode = false;
@@ -38,11 +34,8 @@ class _AuthGatePageState extends State<AuthGatePage> {
   int _secondsLeft = 0;
   String? _error;
   Timer? _timer;
-  LoginMethod _preferredLoginMethod = LoginMethod.password2fa;
-  bool _biometricAvailable = false;
-  bool _biometricPrompting = false;
-  bool _showPasswordForm = true;
-  String? _biometricError;
+  /// Controls whether the secure token/refresh info is persisted for future runs.
+  bool _rememberMe = false;
 
   @override
   void dispose() {
@@ -52,38 +45,6 @@ class _AuthGatePageState extends State<AuthGatePage> {
     _codeController.dispose();
     _timer?.cancel();
     super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeBiometricPreference();
-  }
-
-  Future<void> _initializeBiometricPreference() async {
-    final method = await AuthService.instance.loadPreferredLoginMethod();
-    bool canUseBiometrics = false;
-    if (method == LoginMethod.biometrics) {
-      try {
-        final canCheck = await _localAuth.canCheckBiometrics;
-        final available = await _localAuth.getAvailableBiometrics();
-        canUseBiometrics = canCheck && available.isNotEmpty;
-      } on PlatformException {
-        canUseBiometrics = false;
-      }
-    }
-    if (!mounted) return;
-    setState(() {
-      _preferredLoginMethod = method;
-      _biometricAvailable = method == LoginMethod.biometrics && canUseBiometrics;
-      _showPasswordForm = method != LoginMethod.biometrics || !canUseBiometrics;
-      _biometricError = !canUseBiometrics && method == LoginMethod.biometrics
-          ? 'Biometrics are not available on this device.'
-          : null;
-    });
-    if (method == LoginMethod.biometrics && canUseBiometrics) {
-      await _promptBiometric();
-    }
   }
 
   void _switchMode(bool login) {
@@ -96,67 +57,6 @@ class _AuthGatePageState extends State<AuthGatePage> {
         _codeSent = false;
         _codeController.clear();
       }
-    });
-  }
-
-  Future<void> _promptBiometric() async {
-    setState(() {
-      _biometricPrompting = true;
-      _biometricError = null;
-    });
-    try {
-      final authenticated = await _localAuth.authenticate(
-        localizedReason: 'Use Face ID or fingerprint to continue to Patient Tracker.',
-        options: const AuthenticationOptions(biometricOnly: true),
-      );
-      if (!authenticated) {
-        if (!mounted) return;
-        setState(() {
-          _showPasswordForm = true;
-          _biometricError = 'Biometric authentication was canceled.';
-        });
-        return;
-      }
-      final restored = await AuthService.instance.restoreSessionFromStorage();
-      if (!restored) {
-        if (!mounted) return;
-        setState(() {
-          _showPasswordForm = true;
-          _biometricError = 'Unable to use saved credentials. Sign in manually.';
-        });
-        return;
-      }
-      if (!mounted) return;
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRoutes.home,
-        (route) => false,
-      );
-    } on PlatformException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _showPasswordForm = true;
-        _biometricError =
-            e.message ?? 'Biometric authentication failed. Please try again.';
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _showPasswordForm = true;
-        _biometricError = 'Biometric authentication failed. Please try again.';
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _biometricPrompting = false;
-        });
-      }
-    }
-  }
-
-  void _showPasswordLoginForm() {
-    setState(() {
-      _showPasswordForm = true;
-      _biometricError = 'Use your password and 2FA to continue.';
     });
   }
 
@@ -236,6 +136,7 @@ class _AuthGatePageState extends State<AuthGatePage> {
       _passwordController.text = demoAuthPassword;
       _confirmController.text = demoAuthPassword;
       _codeController.clear();
+      _rememberMe = true;
       _codeSent = false;
       _secondsLeft = 0;
       _error = null;
@@ -289,6 +190,7 @@ class _AuthGatePageState extends State<AuthGatePage> {
         final result = await AuthService.instance.login(
           email: email,
           password: password,
+          rememberMe: _rememberMe,
         );
         await _completeLogin(email, result);
         return;
@@ -306,15 +208,11 @@ class _AuthGatePageState extends State<AuthGatePage> {
         return;
       }
       await MockAuthApi.instance.register(email: email, password: password);
-      AuthService.instance.markPendingGlobalOnboarding();
       final result = await AuthService.instance.login(
         email: email,
         password: password,
-<<<<<<< HEAD
-=======
         rememberMe: _rememberMe,
         showGlobalOnboarding: true,
->>>>>>> 3d14e5a (2FA set up after sign up)
       );
       await _completeLogin(email, result);
       return;
@@ -381,180 +279,7 @@ class _AuthGatePageState extends State<AuthGatePage> {
     );
   }
 
-  Widget _buildCredentialsCard(ThemeData theme, ColorScheme colorScheme) {
-    return Card(
-      elevation: 0,
-      color: colorScheme.surface.withOpacity(0.9),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              autofillHints: const [AutofillHints.email],
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email_outlined),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Password',
-                prefixIcon: Icon(Icons.lock_outline),
-              ),
-            ),
-            if (!_isLogin) ...[
-              const SizedBox(height: 12),
-              TextField(
-                controller: _confirmController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Confirm password',
-                  prefixIcon: Icon(Icons.lock_reset_outlined),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _codeController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Verification code',
-                        prefixIcon: Icon(Icons.verified_outlined),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  SizedBox(
-                    width: 170,
-                    child: ElevatedButton(
-                      onPressed: (_busy || _sendingCode || _secondsLeft > 0)
-                          ? null
-                          : _handleSendCode,
-                      child: _sendingCode
-                          ? const SizedBox(
-                              height: 18,
-                              width: 18,
-                              child:
-                                  CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(
-                              _secondsLeft > 0
-                                  ? 'Resend in ${_secondsLeft}s'
-                                  : _codeSent
-                                      ? 'Resend code'
-                                      : 'Send verification code',
-                            ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'We have sent a 6-digit code to your email. Please enter it here to complete registration.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurface.withOpacity(0.7),
-                ),
-              ),
-            ],
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                _error!,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: colorScheme.error),
-              ),
-            ],
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _busy ? null : _handleSubmit,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: _busy
-                  ? const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(_isLogin ? 'Log in' : 'Create account'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBiometricPrompt(ThemeData theme, ColorScheme colorScheme) {
-    final statusText = _biometricError ??
-        'Authenticate with Face ID or fingerprint to continue.';
-    return Card(
-      elevation: 0,
-      color: colorScheme.surface.withOpacity(0.9),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: CircleAvatar(
-                radius: 28,
-                backgroundColor: colorScheme.primary.withOpacity(0.15),
-                child: Icon(
-                  Icons.fingerprint,
-                  size: 32,
-                  color: colorScheme.primary,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Use Face ID / fingerprint',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              statusText,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurface.withOpacity(0.75),
-              ),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              icon: const Icon(Icons.fingerprint),
-              onPressed: !_biometricAvailable || _biometricPrompting
-                  ? null
-                  : _promptBiometric,
-              label: Text(
-                _biometricPrompting ? 'Authenticating...' : 'Try Face ID / fingerprint',
-              ),
-            ),
-            TextButton(
-              onPressed: _biometricPrompting ? null : _showPasswordLoginForm,
-              child: const Text('Sign in with password instead'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
+  
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -608,11 +333,140 @@ class _AuthGatePageState extends State<AuthGatePage> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  if (_preferredLoginMethod == LoginMethod.biometrics &&
-                      !_showPasswordForm)
-                    _buildBiometricPrompt(theme, colorScheme)
-                  else
-                    _buildCredentialsCard(theme, colorScheme),
+                  Card(
+                    elevation: 0,
+                    color: colorScheme.surface.withOpacity(0.9),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TextField(
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            autofillHints: const [AutofillHints.email],
+                            decoration: const InputDecoration(
+                              labelText: 'Email',
+                              prefixIcon: Icon(Icons.email_outlined),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _passwordController,
+                            obscureText: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Password',
+                              prefixIcon: Icon(Icons.lock_outline),
+                            ),
+                          ),
+                          if (!_isLogin) ...[
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: _confirmController,
+                              obscureText: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Confirm password',
+                                prefixIcon: Icon(Icons.lock_reset_outlined),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _codeController,
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Verification code',
+                                      prefixIcon: Icon(Icons.verified_outlined),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                SizedBox(
+                                  width: 170,
+                                  child: ElevatedButton(
+                                    onPressed: (_busy ||
+                                            _sendingCode ||
+                                            _secondsLeft > 0)
+                                        ? null
+                                        : _handleSendCode,
+                                    child: _sendingCode
+                                        ? const SizedBox(
+                                            height: 18,
+                                            width: 18,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2),
+                                          )
+                                        : Text(
+                                            _secondsLeft > 0
+                                                ? 'Resend in ${_secondsLeft}s'
+                                                : _codeSent
+                                                    ? 'Resend code'
+                                                    : 'Send verification code',
+                                          ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'We have sent a 6-digit code to your email. Please enter it here to complete registration.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color:
+                                    colorScheme.onBackground.withOpacity(0.7),
+                              ),
+                            ),
+                          ],
+                          if (_error != null) ...[
+                            const SizedBox(height: 12),
+                            Text(
+                              _error!,
+                              style: theme.textTheme.bodyMedium
+                                  ?.copyWith(color: colorScheme.error),
+                            ),
+                          ],
+                          if (_isLogin) ...[
+                            const SizedBox(height: 12),
+                            // Remember me triggers secure storage so future launches can auto-login.
+                            CheckboxListTile(
+                              contentPadding: EdgeInsets.zero,
+                              controlAffinity: ListTileControlAffinity.leading,
+                              value: _rememberMe,
+                              onChanged: _busy
+                                  ? null
+                                  : (value) => setState(() {
+                                        _rememberMe = value ?? false;
+                                      }),
+                              title: Text(
+                                'Remember me',
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: _busy ? null : _handleSubmit,
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: _busy
+                                ? const SizedBox(
+                                    height: 18,
+                                    width: 18,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  )
+                                : Text(_isLogin ? 'Log in' : 'Create account'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   if (kDebugMode && _isLogin) ...[
                     Align(

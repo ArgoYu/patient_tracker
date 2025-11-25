@@ -1,8 +1,6 @@
 import 'dart:math';
 
 import 'demo_credentials.dart';
-import 'user_identity.dart';
-import 'mock_user_profile_api.dart';
 
 /// A lightweight stub for sending and verifying email codes.
 ///
@@ -52,10 +50,6 @@ class MockAuthApi {
     await Future<void>.delayed(const Duration(milliseconds: 400));
     // In a real implementation we would persist the user and return tokens.
     _codes.remove(email);
-<<<<<<< HEAD
-    final userId = UserIdentity.idForEmail(email);
-    await MockUserProfileApi.instance.registerUser(userId);
-=======
     final userId = _userIdForEmail(email);
     _onboardingCompleted[userId] = false;
     _twoFactorEnabled[userId] = false;
@@ -87,7 +81,6 @@ class MockAuthApi {
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 120));
     _twoFactorEnabled[userId] = true;
->>>>>>> 3d14e5a (2FA set up after sign up)
   }
 
   String _generateCode() {
