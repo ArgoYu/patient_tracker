@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/routing/app_routes.dart';
 import '../../shared/language_preferences.dart';
-import '../../shared/prefs_keys.dart';
-
-const kOnboardingVersion = 2;
+import '../auth/user_profile_store.dart';
 
 class OnboardingFlowArguments {
-  const OnboardingFlowArguments({this.replay = false});
+  const OnboardingFlowArguments({
+    this.replay = false,
+    this.userId,
+    this.afterOnboardingRoute,
+  });
+
   final bool replay;
+  final String? userId;
+  final String? afterOnboardingRoute;
 }
 
 class OnboardingPage extends StatefulWidget {
@@ -49,20 +53,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
     super.dispose();
   }
 
-  bool _isReplayFlow() {
-    final args = ModalRoute.of(context)?.settings.arguments;
-    if (args is OnboardingFlowArguments) {
-      return args.replay;
-    }
-    if (args is Map) {
-      final replay = args['replay'];
-      if (replay is bool) {
-        return replay;
-      }
-    }
-    return false;
-  }
-
   Future<void> _loadPreferredLanguage() async {
     final code = await LanguagePreferences.loadPreferredLanguageCode();
     if (!mounted) return;
@@ -86,8 +76,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
   }
 
   Future<void> _finish() async {
-    final isReplay = _isReplayFlow();
-    if (!consentChecked && !isReplay) {
+    final args = _resolveFlowArguments();
+    if (!consentChecked && !args.replay) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -96,20 +86,35 @@ class _OnboardingPageState extends State<OnboardingPage> {
       );
       return;
     }
-    if (isReplay) {
+    if (args.replay) {
       if (!mounted) return;
       Navigator.of(context).pop();
       return;
     }
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(PrefsKeys.onboardingCompleted, true);
-    await prefs.setInt(PrefsKeys.onboardingVersion, kOnboardingVersion);
-    await prefs.setString(
-      PrefsKeys.preferredLanguageCode,
-      _preferredLanguageCode,
-    );
+    await LanguagePreferences.savePreferredLanguageCode(_preferredLanguageCode);
+    if (args.userId != null) {
+      await UserProfileStore.instance
+          .markGlobalOnboardingComplete(args.userId!);
+    }
     if (!mounted) return;
-    Navigator.of(context).pushReplacementNamed(AppRoutes.auth);
+    final destination = args.afterOnboardingRoute ?? AppRoutes.home;
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      destination,
+      (route) => false,
+    );
+  }
+
+  OnboardingFlowArguments _resolveFlowArguments() {
+    final modalArgs = ModalRoute.of(context)?.settings.arguments;
+    if (modalArgs is OnboardingFlowArguments) return modalArgs;
+    if (modalArgs is Map) {
+      return OnboardingFlowArguments(
+        replay: modalArgs['replay'] == true,
+        userId: modalArgs['userId'] as String?,
+        afterOnboardingRoute: modalArgs['afterRoute'] as String?,
+      );
+    }
+    return const OnboardingFlowArguments();
   }
 
   @override

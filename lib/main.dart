@@ -6,17 +6,13 @@ import 'dart:ui' as ui show KeyData, KeyEventType;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
 import 'core/routing/app_routes.dart';
-import 'features/onboarding/onboarding_page.dart';
-import 'features/auth/auth_service.dart';
 import 'features/voice_chat/services/voice_ai_http_service.dart';
 import 'features/voice_chat/services/voice_ai_service.dart';
 import 'features/voice_chat/services/voice_ai_service_registry.dart';
 import 'features/voice_chat/services/voice_chat_config.dart';
-import 'shared/prefs_keys.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,15 +20,7 @@ Future<void> main() async {
   _configureVoiceChatService();
 
   await Hive.initFlutter();
-  final sp = await SharedPreferences.getInstance();
-  final done = sp.getBool(PrefsKeys.onboardingCompleted) ?? false;
-  final version = sp.getInt(PrefsKeys.onboardingVersion) ?? 0;
-  final needOnboarding = !done || version < kOnboardingVersion;
-  final remembered = await AuthService.instance.tryAutoLogin();
-  final initialRoute = needOnboarding
-      ? AppRoutes.onboarding
-      : (remembered ? AppRoutes.home : AppRoutes.auth);
-  runApp(AppRoot(initialRoute: initialRoute));
+  runApp(const AppRoot(initialRoute: AppRoutes.auth));
 }
 
 void _configureVoiceChatService() {
