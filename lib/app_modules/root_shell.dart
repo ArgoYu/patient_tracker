@@ -90,6 +90,13 @@ _CustomShortcutDefinition _shortcutById(int id) =>
 enum _CopingPlanShareAction { shareText, exportPdf }
 
 const _kDiscoveryPrefKey = 'discovery_completed';
+const String _kGuestAccountId = 'guest';
+
+String _accountKeyFor(UserAccount? account) =>
+    account?.id ?? _kGuestAccountId;
+
+String _discoveryKeyFor(String accountId) =>
+    '$_kDiscoveryPrefKey\_$accountId';
 
 class _RootShellState extends State<RootShell> {
   static const int _kTabHome = 0;
@@ -129,266 +136,36 @@ class _RootShellState extends State<RootShell> {
     return Navigator.of(context).push(route);
   }
 
-  final List<Goal> goals = [
-    Goal(
-        title: 'Walk 30 minutes',
-        progress: 0.6,
-        instructions:
-            'Warm up for 5 minutes, walk at a brisk pace, cool down and stretch.',
-        category: GoalCategory.exercises,
-        frequency: GoalFrequency.daily,
-        timesPerPeriod: 1,
-        startDate: DateUtils.dateOnly(
-            DateTime.now().subtract(const Duration(days: 7))),
-        endDate:
-            DateUtils.dateOnly(DateTime.now().add(const Duration(days: 21))),
-        reminder: const TimeOfDay(hour: 9, minute: 0),
-        importance: GoalImportance.medium),
-    Goal(
-        title: 'Take meds on time (AM/PM)',
-        progress: 0.9,
-        instructions: 'Lay out pill organizer each night and log after doses.',
-        category: GoalCategory.treatment,
-        frequency: GoalFrequency.daily,
-        timesPerPeriod: 2,
-        startDate: DateUtils.dateOnly(
-            DateTime.now().subtract(const Duration(days: 3))),
-        endDate:
-            DateUtils.dateOnly(DateTime.now().add(const Duration(days: 27))),
-        reminder: const TimeOfDay(hour: 8, minute: 0),
-        importance: GoalImportance.high),
-    Goal(
-        title: 'Meditate 10 minutes',
-        progress: 0.2,
-        instructions:
-            'Use the breathing app after dinner and note reflections.',
-        category: GoalCategory.meditation,
-        frequency: GoalFrequency.weekly,
-        timesPerPeriod: 4,
-        startDate: DateUtils.dateOnly(
-            DateTime.now().subtract(const Duration(days: 1))),
-        endDate:
-            DateUtils.dateOnly(DateTime.now().add(const Duration(days: 60))),
-        reminder: const TimeOfDay(hour: 21, minute: 0),
-        importance: GoalImportance.low),
-    Goal(
-        title: 'Lights out by 11 PM',
-        progress: 0.4,
-        instructions: 'Wind down with reading and avoid screens after 10:30.',
-        category: GoalCategory.sleep,
-        frequency: GoalFrequency.daily,
-        timesPerPeriod: 1,
-        startDate: DateUtils.dateOnly(
-            DateTime.now().subtract(const Duration(days: 5))),
-        endDate:
-            DateUtils.dateOnly(DateTime.now().add(const Duration(days: 25))),
-        reminder: const TimeOfDay(hour: 22, minute: 30),
-        importance: GoalImportance.medium),
-    Goal(
-        title: 'Drink 8 cups of water',
-        progress: 0.5,
-        instructions:
-            'Use the hydration tracker app and keep a water bottle nearby.',
-        category: GoalCategory.hydration,
-        frequency: GoalFrequency.daily,
-        timesPerPeriod: 8,
-        startDate: DateUtils.dateOnly(
-            DateTime.now().subtract(const Duration(days: 2))),
-        endDate:
-            DateUtils.dateOnly(DateTime.now().add(const Duration(days: 30))),
-        reminder: const TimeOfDay(hour: 10, minute: 0),
-        importance: GoalImportance.medium),
-    Goal(
-        title: 'Check in with a friend',
-        progress: 0.3,
-        instructions:
-            'Send a thoughtful message or schedule a video call each week.',
-        category: GoalCategory.social,
-        frequency: GoalFrequency.weekly,
-        timesPerPeriod: 2,
-        startDate: DateUtils.dateOnly(
-            DateTime.now().subtract(const Duration(days: 10))),
-        endDate:
-            DateUtils.dateOnly(DateTime.now().add(const Duration(days: 40))),
-        reminder: const TimeOfDay(hour: 19, minute: 0),
-        importance: GoalImportance.high),
-    Goal(
-        title: 'Meal prep Sundays',
-        progress: 0.7,
-        instructions:
-            'Plan a balanced menu, grocery shop Saturday, cook Sunday afternoon.',
-        category: GoalCategory.diet,
-        frequency: GoalFrequency.weekly,
-        timesPerPeriod: 1,
-        startDate: DateUtils.dateOnly(
-            DateTime.now().subtract(const Duration(days: 21))),
-        endDate:
-            DateUtils.dateOnly(DateTime.now().add(const Duration(days: 14))),
-        reminder: const TimeOfDay(hour: 15, minute: 0),
-        importance: GoalImportance.medium),
-  ];
-  final List<RxMedication> meds = [
-    RxMedication(
-      name: 'Sertraline',
-      dose: '50 mg · morning',
-      effect: 'Helps balance serotonin to reduce anxiety and stabilize mood.',
-      sideEffects: 'Mild nausea, vivid dreams during first week.',
-      intakeLog: [
-        DateTime.now().subtract(const Duration(days: 2, hours: 3)),
-        DateTime.now().subtract(const Duration(days: 1, hours: 2)),
-      ],
-    ),
-    RxMedication(
-      name: 'Quetiapine',
-      dose: '25 mg · evening',
-      effect: 'Supports sleep onset and reduces nighttime racing thoughts.',
-      sideEffects: 'Possible morning grogginess; stay hydrated.',
-      intakeLog: [
-        DateTime.now().subtract(const Duration(days: 1, hours: 1)),
-      ],
-    ),
-  ];
-  int feelingsScore = 4;
-  final List<FeelingEntry> feelingHistory = [];
-  CarePlan carePlan = CarePlan(
-    physician: 'Dr. Wang (Psychiatry)',
-    insurance: InsuranceSummary(totalCost: 12430.00, covered: 9850.00),
-    medsEffects: const [
-      MedEffect(
-          name: 'Sertraline 50 mg',
-          effect: 'Mood stabilization; fewer panic spikes',
-          sideEffects: 'Mild nausea (first week)'),
-      MedEffect(
-          name: 'Quetiapine 25 mg',
-          effect: 'Better sleep onset',
-          sideEffects: 'Morning grogginess'),
-    ],
-    plan: const [
-      'CBT weekly (8 sessions)',
-      'Sleep hygiene routine',
-      'Daily walk 30 minutes',
-      'Meds review after 4 weeks'
-    ],
-    expectedOutcomes: const [
-      'PHQ-9 ↓ by 5–8 points in 4–6 weeks',
-      'Sleep latency < 30 min in 2–3 weeks'
-    ],
-  );
-  final List<ScheduleItem> schedule = [
-    ScheduleItem(
-        title: 'Surgery (arthroscopy)',
-        date: DateTime.now().add(const Duration(days: 7)),
-        notes:
-            'Arrive fasting; bring insurance card. Check in at Building A, Room 203.',
-        kind: ScheduleKind.surgery,
-        location: 'Springfield General Hospital, Wing C',
-        link: 'https://example.com/surgery-prep',
-        doctor: 'Dr. Smith',
-        attendees: const ['Nurse Allen', 'Physio lead: Jamie G.']),
-  ];
-  PatientProfile profile = PatientProfile(
-      name: 'Argo',
-      patientId: 'MRN 2025-001',
-      avatarUrl: null,
-      notes: 'Anxiety · Insomnia',
-      email: 'argo@example.com',
-      phoneNumber: '(415) 555-0135');
-  List<HomePanel> homeOrder = [
-    HomePanel.goals,
-    HomePanel.meds,
-    HomePanel.feelings,
-    HomePanel.sud
-  ];
-  final List<VitalEntry> vitalHistory = [
-    VitalEntry(
-        date: DateTime.now().subtract(const Duration(days: 2)),
-        systolic: 122,
-        diastolic: 78,
-        heartRate: 72),
-    VitalEntry(
-        date: DateTime.now().subtract(const Duration(days: 1)),
-        systolic: 118,
-        diastolic: 76,
-        heartRate: 70),
-    VitalEntry(
-        date: DateTime.now(), systolic: 125, diastolic: 80, heartRate: 74),
-  ];
-  final List<LabResult> labResults = [
-    LabResult(
-        name: 'Complete Blood Count',
-        value: 'Normal',
-        unit: '',
-        collectedOn: DateTime.now().subtract(const Duration(days: 10)),
-        notes: 'All markers within range.'),
-    LabResult(
-        name: 'TSH',
-        value: '2.1',
-        unit: 'µIU/mL',
-        collectedOn: DateTime.now().subtract(const Duration(days: 20)),
-        notes: 'Within reference 0.4–4.0.'),
-    LabResult(
-        name: 'Vitamin D',
-        value: '28',
-        unit: 'ng/mL',
-        collectedOn: DateTime.now().subtract(const Duration(days: 35)),
-        notes: 'Slightly low · supplement recommended.'),
-  ];
-  NextVisit nextVisit = NextVisit(
-    title: 'Review meds & sleep',
-    when: DateTime.now().add(const Duration(days: 3, hours: 2, minutes: 30)),
-    location: 'Telehealth (Zoom link)',
-    doctor: 'Dr. Wang',
-    mode: 'Online',
-    notes: 'Prepare PHQ-9 and sleep diary.',
-  );
-  SafetyPlanData safetyPlan = SafetyPlanData.defaults();
-  final List<AppNotification> notifications = [
-    AppNotification('Welcome', 'Thanks for using Patient Tracker.',
-        DateTime.now().subtract(const Duration(hours: 2))),
-    AppNotification('Meds Reminder', 'Evening dose due at 8:00 PM.',
-        DateTime.now().subtract(const Duration(hours: 1))),
-  ];
-  final List<CopingPlan> copingPlans = [
-    CopingPlan(
-      id: 'plan-1',
-      title: 'My coping plan #1',
-      warningSigns: const [
-        'Sleeping poorly',
-        'Feeling on edge',
-        'Thinking about old triggers',
-      ],
-      steps: const [
-        CopingPlanStep(
-          description: 'Box breathing for 2 minutes',
-          estimatedDuration: Duration(minutes: 2),
-        ),
-        CopingPlanStep(
-          description: 'Step outside for fresh air',
-          estimatedDuration: Duration(minutes: 5),
-        ),
-        CopingPlanStep(
-          description: 'Call my support contact and share how I feel',
-          estimatedDuration: Duration(minutes: 5),
-        ),
-      ],
-      supportContacts: const [
-        SupportContact(name: 'Coach Riley', phone: '+1-555-201-8842'),
-        SupportContact(name: 'Sponsor June', phone: '+1-555-433-0098'),
-      ],
-      safeLocations: const ['Dorm common area', 'Campus wellness lounge'],
-      checkInTime: const TimeOfDay(hour: 21, minute: 0),
-      pinnedAt: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-  ];
+  late AccountData _accountData;
+  late final ValueListenable<UserAccount?> _accountListenable;
+  late final VoidCallback _accountListener;
+  String _currentAccountId = _accountKeyFor(null);
 
-  final Map<MealSlot, List<MealOption>> mealMenu = kDefaultMealMenu;
-  final Map<MealSlot, int> mealSelections = {
-    for (final slot in MealSlot.values) slot: 0,
-  };
-  final Map<MealSlot, TimeOfDay> mealDeliveryWindows =
-      Map<MealSlot, TimeOfDay>.from(kDefaultMealWindows);
-  final Set<MealSlot> completedMeals = <MealSlot>{};
-  String mealNotes = kDefaultMealNotes;
+  List<Goal> get goals => _accountData.goals;
+  List<RxMedication> get meds => _accountData.meds;
+  int get feelingsScore => _accountData.feelingsScore;
+  set feelingsScore(int value) => _accountData.feelingsScore = value;
+  List<FeelingEntry> get feelingHistory => _accountData.feelingHistory;
+  CarePlan get carePlan => _accountData.carePlan;
+  set carePlan(CarePlan value) => _accountData.carePlan = value;
+  List<ScheduleItem> get schedule => _accountData.schedule;
+  PatientProfile get profile => _accountData.profile;
+  set profile(PatientProfile value) => _accountData.profile = value;
+  List<HomePanel> get homeOrder => _accountData.homeOrder;
+  List<VitalEntry> get vitalHistory => _accountData.vitalHistory;
+  List<LabResult> get labResults => _accountData.labResults;
+  NextVisit get nextVisit => _accountData.nextVisit;
+  SafetyPlanData get safetyPlan => _accountData.safetyPlan;
+  set safetyPlan(SafetyPlanData value) => _accountData.safetyPlan = value;
+  List<AppNotification> get notifications => _accountData.notifications;
+  List<CopingPlan> get copingPlans => _accountData.copingPlans;
+  Map<MealSlot, List<MealOption>> get mealMenu => _accountData.mealMenu;
+  Map<MealSlot, int> get mealSelections => _accountData.mealSelections;
+  Map<MealSlot, TimeOfDay> get mealDeliveryWindows =>
+      _accountData.mealDeliveryWindows;
+  Set<MealSlot> get completedMeals => _accountData.completedMeals;
+  String get mealNotes => _accountData.mealNotes;
+  set mealNotes(String value) => _accountData.mealNotes = value;
 
   void _selectMealOption(MealSlot slot, int index) {
     setState(() {
@@ -777,7 +554,14 @@ class _RootShellState extends State<RootShell> {
     super.initState();
     idx = widget.initialIndex;
     _coConsultCoordinator.addListener(_onCoConsultUpdated);
-    _loadFeatureDiscoveryFlag();
+
+    _accountListenable = AuthService.instance.currentUserAccountListenable;
+    final initialAccount = _accountListenable.value;
+    _currentAccountId = _accountKeyFor(initialAccount);
+    _accountData = _accountDataRepository.forAccount(initialAccount);
+    _accountListener = _handleAccountChanged;
+    _accountListenable.addListener(_accountListener);
+    _loadFeatureDiscoveryFlag(_currentAccountId);
   }
 
   void _onCoConsultUpdated() {
@@ -788,19 +572,32 @@ class _RootShellState extends State<RootShell> {
     });
   }
 
-  Future<void> _loadFeatureDiscoveryFlag() async {
+  void _handleAccountChanged() {
+    final account = _accountListenable.value;
+    final key = _accountKeyFor(account);
+    if (key == _currentAccountId) return;
+    final data = _accountDataRepository.forAccount(account);
+    if (!mounted) return;
+    setState(() {
+      _accountData = data;
+      _currentAccountId = key;
+      _showFeatureDiscovery = false;
+    });
+    _loadFeatureDiscoveryFlag(key);
+  }
+
+  Future<void> _loadFeatureDiscoveryFlag(String accountId) async {
     final prefs = await SharedPreferences.getInstance();
-    final completed = prefs.getBool(_kDiscoveryPrefKey) ?? false;
-    if (!completed && mounted) {
-      setState(() => _showFeatureDiscovery = true);
-    }
+    final completed = prefs.getBool(_discoveryKeyFor(accountId)) ?? false;
+    if (!mounted) return;
+    setState(() => _showFeatureDiscovery = !completed);
   }
 
   void _completeFeatureDiscovery() {
     if (!_showFeatureDiscovery) return;
     setState(() => _showFeatureDiscovery = false);
     SharedPreferences.getInstance().then(
-      (prefs) => prefs.setBool(_kDiscoveryPrefKey, true),
+      (prefs) => prefs.setBool(_discoveryKeyFor(_currentAccountId), true),
     );
   }
 
@@ -815,6 +612,7 @@ class _RootShellState extends State<RootShell> {
   @override
   void dispose() {
     _coConsultCoordinator.removeListener(_onCoConsultUpdated);
+    _accountListenable.removeListener(_accountListener);
     super.dispose();
   }
 
@@ -1316,5 +1114,406 @@ class _FeatureDiscoveryOverlay extends StatelessWidget {
     );
   }
 }
+
+final AccountDataRepository _accountDataRepository = AccountDataRepository();
+
+class AccountDataRepository {
+  final Map<String, AccountData> _cache = {};
+
+  AccountData forAccount(UserAccount? account) {
+    final key = _accountKeyFor(account);
+    return _cache.putIfAbsent(
+      key,
+      () => (account?.isDemo ?? false)
+          ? AccountData.demo()
+          : AccountData.empty(account),
+    );
+  }
+}
+
+class AccountData {
+  AccountData._({
+    required this.goals,
+    required this.meds,
+    required this.feelingsScore,
+    required this.feelingHistory,
+    required this.carePlan,
+    required this.schedule,
+    required this.profile,
+    required this.homeOrder,
+    required this.vitalHistory,
+    required this.labResults,
+    required this.nextVisit,
+    required this.safetyPlan,
+    required this.notifications,
+    required this.copingPlans,
+    required this.mealMenu,
+    required this.mealSelections,
+    required this.mealDeliveryWindows,
+    required this.completedMeals,
+    required this.mealNotes,
+  });
+
+  final List<Goal> goals;
+  final List<RxMedication> meds;
+  int feelingsScore;
+  final List<FeelingEntry> feelingHistory;
+  CarePlan carePlan;
+  final List<ScheduleItem> schedule;
+  PatientProfile profile;
+  final List<HomePanel> homeOrder;
+  final List<VitalEntry> vitalHistory;
+  final List<LabResult> labResults;
+  final NextVisit nextVisit;
+  SafetyPlanData safetyPlan;
+  final List<AppNotification> notifications;
+  final List<CopingPlan> copingPlans;
+  final Map<MealSlot, List<MealOption>> mealMenu;
+  final Map<MealSlot, int> mealSelections;
+  final Map<MealSlot, TimeOfDay> mealDeliveryWindows;
+  final Set<MealSlot> completedMeals;
+  String mealNotes;
+
+  factory AccountData.demo() => AccountData._(
+        goals: _buildDemoGoals(),
+        meds: _buildDemoMeds(),
+        feelingsScore: 4,
+        feelingHistory: [],
+        carePlan: _buildDemoCarePlan(),
+        schedule: _buildDemoSchedule(),
+        profile: _buildDemoProfile(),
+        homeOrder: _defaultHomePanels(),
+        vitalHistory: _buildDemoVitals(),
+        labResults: _buildDemoLabResults(),
+        nextVisit: _buildDemoNextVisit(),
+        safetyPlan: SafetyPlanData.defaults(),
+        notifications: _buildDemoNotifications(),
+        copingPlans: _buildDemoCopingPlans(),
+        mealMenu: kDefaultMealMenu,
+        mealSelections: _defaultMealSelections(),
+        mealDeliveryWindows: _defaultMealWindows(),
+        completedMeals: _defaultCompletedMeals(),
+        mealNotes: kDefaultMealNotes,
+      );
+
+  factory AccountData.empty(UserAccount? account) => AccountData._(
+        goals: [],
+        meds: [],
+        feelingsScore: 3,
+        feelingHistory: [],
+        carePlan: _emptyCarePlan(),
+        schedule: [],
+        profile: _profileFor(account),
+        homeOrder: _defaultHomePanels(),
+        vitalHistory: [],
+        labResults: [],
+        nextVisit: _fallbackNextVisit(),
+        safetyPlan: SafetyPlanData(),
+        notifications: [],
+        copingPlans: [],
+        mealMenu: kDefaultMealMenu,
+        mealSelections: _defaultMealSelections(),
+        mealDeliveryWindows: _defaultMealWindows(),
+        completedMeals: _defaultCompletedMeals(),
+        mealNotes: kDefaultMealNotes,
+      );
+}
+
+List<HomePanel> _defaultHomePanels() => [
+      HomePanel.goals,
+      HomePanel.meds,
+      HomePanel.feelings,
+      HomePanel.sud
+    ];
+
+CarePlan _emptyCarePlan() => CarePlan(
+      physician: '',
+      insurance: InsuranceSummary(totalCost: 0, covered: 0),
+      medsEffects: const [],
+      plan: const [],
+      expectedOutcomes: const [],
+    );
+
+PatientProfile _profileFor(UserAccount? account) {
+  return PatientProfile(
+    name: account?.displayName ?? 'Guest',
+    patientId: account?.id ?? _kGuestAccountId,
+    email: account?.email,
+  );
+}
+
+NextVisit _fallbackNextVisit() => NextVisit(
+      title: 'No upcoming visits',
+      when: DateTime.now(),
+      location: 'TBD',
+      doctor: 'TBD',
+      notes: 'Schedule a visit to receive reminders.',
+    );
+
+Map<MealSlot, int> _defaultMealSelections() => {
+      for (final slot in MealSlot.values) slot: 0,
+    };
+
+Map<MealSlot, TimeOfDay> _defaultMealWindows() =>
+    Map<MealSlot, TimeOfDay>.from(kDefaultMealWindows);
+
+Set<MealSlot> _defaultCompletedMeals() => <MealSlot>{};
+
+List<Goal> _buildDemoGoals() {
+  return [
+    Goal(
+        title: 'Walk 30 minutes',
+        progress: 0.6,
+        instructions:
+            'Warm up for 5 minutes, walk at a brisk pace, cool down and stretch.',
+        category: GoalCategory.exercises,
+        frequency: GoalFrequency.daily,
+        timesPerPeriod: 1,
+        startDate: DateUtils.dateOnly(
+            DateTime.now().subtract(const Duration(days: 7))),
+        endDate:
+            DateUtils.dateOnly(DateTime.now().add(const Duration(days: 21))),
+        reminder: const TimeOfDay(hour: 9, minute: 0),
+        importance: GoalImportance.medium),
+    Goal(
+        title: 'Take meds on time (AM/PM)',
+        progress: 0.9,
+        instructions: 'Lay out pill organizer each night and log after doses.',
+        category: GoalCategory.treatment,
+        frequency: GoalFrequency.daily,
+        timesPerPeriod: 2,
+        startDate: DateUtils.dateOnly(
+            DateTime.now().subtract(const Duration(days: 3))),
+        endDate:
+            DateUtils.dateOnly(DateTime.now().add(const Duration(days: 27))),
+        reminder: const TimeOfDay(hour: 8, minute: 0),
+        importance: GoalImportance.high),
+    Goal(
+        title: 'Meditate 10 minutes',
+        progress: 0.2,
+        instructions:
+            'Use the breathing app after dinner and note reflections.',
+        category: GoalCategory.meditation,
+        frequency: GoalFrequency.weekly,
+        timesPerPeriod: 4,
+        startDate: DateUtils.dateOnly(
+            DateTime.now().subtract(const Duration(days: 1))),
+        endDate:
+            DateUtils.dateOnly(DateTime.now().add(const Duration(days: 60))),
+        reminder: const TimeOfDay(hour: 21, minute: 0),
+        importance: GoalImportance.low),
+    Goal(
+        title: 'Lights out by 11 PM',
+        progress: 0.4,
+        instructions: 'Wind down with reading and avoid screens after 10:30.',
+        category: GoalCategory.sleep,
+        frequency: GoalFrequency.daily,
+        timesPerPeriod: 1,
+        startDate: DateUtils.dateOnly(
+            DateTime.now().subtract(const Duration(days: 5))),
+        endDate:
+            DateUtils.dateOnly(DateTime.now().add(const Duration(days: 25))),
+        reminder: const TimeOfDay(hour: 22, minute: 30),
+        importance: GoalImportance.medium),
+    Goal(
+        title: 'Drink 8 cups of water',
+        progress: 0.5,
+        instructions:
+            'Use the hydration tracker app and keep a water bottle nearby.',
+        category: GoalCategory.hydration,
+        frequency: GoalFrequency.daily,
+        timesPerPeriod: 8,
+        startDate: DateUtils.dateOnly(
+            DateTime.now().subtract(const Duration(days: 2))),
+        endDate:
+            DateUtils.dateOnly(DateTime.now().add(const Duration(days: 30))),
+        reminder: const TimeOfDay(hour: 10, minute: 0),
+        importance: GoalImportance.medium),
+    Goal(
+        title: 'Check in with a friend',
+        progress: 0.3,
+        instructions:
+            'Send a thoughtful message or schedule a video call each week.',
+        category: GoalCategory.social,
+        frequency: GoalFrequency.weekly,
+        timesPerPeriod: 2,
+        startDate: DateUtils.dateOnly(
+            DateTime.now().subtract(const Duration(days: 10))),
+        endDate:
+            DateUtils.dateOnly(DateTime.now().add(const Duration(days: 40))),
+        reminder: const TimeOfDay(hour: 19, minute: 0),
+        importance: GoalImportance.high),
+    Goal(
+        title: 'Meal prep Sundays',
+        progress: 0.7,
+        instructions:
+            'Plan a balanced menu, grocery shop Saturday, cook Sunday afternoon.',
+        category: GoalCategory.diet,
+        frequency: GoalFrequency.weekly,
+        timesPerPeriod: 1,
+        startDate: DateUtils.dateOnly(
+            DateTime.now().subtract(const Duration(days: 21))),
+        endDate:
+            DateUtils.dateOnly(DateTime.now().add(const Duration(days: 14))),
+        reminder: const TimeOfDay(hour: 15, minute: 0),
+        importance: GoalImportance.medium),
+  ];
+}
+
+List<RxMedication> _buildDemoMeds() {
+  return [
+    RxMedication(
+      name: 'Sertraline',
+      dose: '50 mg · morning',
+      effect: 'Helps balance serotonin to reduce anxiety and stabilize mood.',
+      sideEffects: 'Mild nausea, vivid dreams during first week.',
+      intakeLog: [
+        DateTime.now().subtract(const Duration(days: 2, hours: 3)),
+        DateTime.now().subtract(const Duration(days: 1, hours: 2)),
+      ],
+    ),
+    RxMedication(
+      name: 'Quetiapine',
+      dose: '25 mg · evening',
+      effect: 'Supports sleep onset and reduces nighttime racing thoughts.',
+      sideEffects: 'Possible morning grogginess; stay hydrated.',
+      intakeLog: [
+        DateTime.now().subtract(const Duration(days: 1, hours: 1)),
+      ],
+    ),
+  ];
+}
+
+CarePlan _buildDemoCarePlan() => CarePlan(
+      physician: 'Dr. Wang (Psychiatry)',
+      insurance: InsuranceSummary(totalCost: 12430.00, covered: 9850.00),
+      medsEffects: const [
+        MedEffect(
+            name: 'Sertraline 50 mg',
+            effect: 'Mood stabilization; fewer panic spikes',
+            sideEffects: 'Mild nausea (first week)'),
+        MedEffect(
+            name: 'Quetiapine 25 mg',
+            effect: 'Better sleep onset',
+            sideEffects: 'Morning grogginess'),
+      ],
+      plan: const [
+        'CBT weekly (8 sessions)',
+        'Sleep hygiene routine',
+        'Daily walk 30 minutes',
+        'Meds review after 4 weeks'
+      ],
+      expectedOutcomes: const [
+        'PHQ-9 ↓ by 5–8 points in 4–6 weeks',
+        'Sleep latency < 30 min in 2–3 weeks'
+      ],
+    );
+
+List<ScheduleItem> _buildDemoSchedule() => [
+      ScheduleItem(
+          title: 'Surgery (arthroscopy)',
+          date: DateTime.now().add(const Duration(days: 7)),
+          notes:
+              'Arrive fasting; bring insurance card. Check in at Building A, Room 203.',
+          kind: ScheduleKind.surgery,
+          location: 'Springfield General Hospital, Wing C',
+          link: 'https://example.com/surgery-prep',
+          doctor: 'Dr. Smith',
+          attendees: const ['Nurse Allen', 'Physio lead: Jamie G.']),
+    ];
+
+PatientProfile _buildDemoProfile() => PatientProfile(
+      name: 'Argo',
+      patientId: 'MRN 2025-001',
+      avatarUrl: null,
+      notes: 'Anxiety · Insomnia',
+      email: 'argo@example.com',
+      phoneNumber: '(415) 555-0135',
+    );
+
+List<VitalEntry> _buildDemoVitals() => [
+      VitalEntry(
+          date: DateTime.now().subtract(const Duration(days: 2)),
+          systolic: 122,
+          diastolic: 78,
+          heartRate: 72),
+      VitalEntry(
+          date: DateTime.now().subtract(const Duration(days: 1)),
+          systolic: 118,
+          diastolic: 76,
+          heartRate: 70),
+      VitalEntry(
+          date: DateTime.now(), systolic: 125, diastolic: 80, heartRate: 74),
+    ];
+
+List<LabResult> _buildDemoLabResults() => [
+      LabResult(
+          name: 'Complete Blood Count',
+          value: 'Normal',
+          unit: '',
+          collectedOn: DateTime.now().subtract(const Duration(days: 10)),
+          notes: 'All markers within range.'),
+      LabResult(
+          name: 'TSH',
+          value: '2.1',
+          unit: 'µIU/mL',
+          collectedOn: DateTime.now().subtract(const Duration(days: 20)),
+          notes: 'Within reference 0.4–4.0.'),
+      LabResult(
+          name: 'Vitamin D',
+          value: '28',
+          unit: 'ng/mL',
+          collectedOn: DateTime.now().subtract(const Duration(days: 35)),
+          notes: 'Slightly low · supplement recommended.'),
+    ];
+
+NextVisit _buildDemoNextVisit() => NextVisit(
+      title: 'Review meds & sleep',
+      when: DateTime.now().add(const Duration(days: 3, hours: 2, minutes: 30)),
+      location: 'Telehealth (Zoom link)',
+      doctor: 'Dr. Wang',
+      mode: 'Online',
+      notes: 'Prepare PHQ-9 and sleep diary.',
+    );
+
+List<AppNotification> _buildDemoNotifications() => [
+      AppNotification('Welcome', 'Thanks for using Patient Tracker.',
+          DateTime.now().subtract(const Duration(hours: 2))),
+      AppNotification('Meds Reminder', 'Evening dose due at 8:00 PM.',
+          DateTime.now().subtract(const Duration(hours: 1))),
+    ];
+
+List<CopingPlan> _buildDemoCopingPlans() => [
+      CopingPlan(
+        id: 'plan-1',
+        title: 'My coping plan #1',
+        warningSigns: [
+          'Sleeping poorly',
+          'Feeling on edge',
+          'Thinking about old triggers',
+        ],
+        steps: [
+          CopingPlanStep(
+            description: 'Box breathing for 2 minutes',
+            estimatedDuration: Duration(minutes: 2),
+          ),
+          CopingPlanStep(
+            description: 'Step outside for fresh air',
+            estimatedDuration: Duration(minutes: 5),
+          ),
+          CopingPlanStep(
+            description: 'Call my support contact and share how I feel',
+            estimatedDuration: Duration(minutes: 5),
+          ),
+        ],
+        supportContacts: [
+          SupportContact(name: 'Coach Riley', phone: '+1-555-201-8842'),
+          SupportContact(name: 'Sponsor June', phone: '+1-555-433-0098'),
+        ],
+        safeLocations: ['Dorm common area', 'Campus wellness lounge'],
+        checkInTime: const TimeOfDay(hour: 21, minute: 0),
+        pinnedAt: DateTime.now().subtract(const Duration(days: 1)),
+      ),
+    ];
 
 /// ===================== Goals / Meds / Feelings / Me / Calendar =====================

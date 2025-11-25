@@ -6,7 +6,7 @@ const String demoPassword = '67';
 const String demoVerificationCode = '000000';
 
 const demoUserAccount = UserAccount(
-  id: 'demo-argo',
+  id: demoAccountId,
   email: demoEmail,
   displayName: 'Argo',
 );

@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+const String demoAccountId = 'demo-argo';
+
 /// Represents the authenticated account metadata shared across the app.
 class UserAccount {
   const UserAccount({
@@ -11,6 +13,8 @@ class UserAccount {
   final String id;
   final String email;
   final String displayName;
+
+  bool get isDemo => id == demoAccountId;
 
   Map<String, dynamic> toMap() => {
         'id': id,
@@ -57,3 +61,5 @@ class UserAccount {
   @override
   int get hashCode => Object.hash(id, email, displayName);
 }
+
+bool isDemoAccount(UserAccount? account) => account?.isDemo ?? false;

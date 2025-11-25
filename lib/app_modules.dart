@@ -50,6 +50,8 @@ import 'features/voice_chat/voice_chat_page.dart';
 import 'features/ask_ai_doctor/chat_screen.dart';
 import 'features/auth/auth_gate_page.dart';
 import 'features/auth/auth_repository.dart';
+import 'features/auth/auth_service.dart';
+import 'features/auth/user_account.dart';
 import 'features/onboarding/global_onboarding_screen.dart';
 import 'shared/app_settings.dart';
 import 'shared/language_preferences.dart';
