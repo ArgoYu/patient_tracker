@@ -182,7 +182,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
                       'Two-factor authentication keeps your medical history and care team '
                       'conversations safe. Complete setup before entering the app.',
                       style: theme.textTheme.bodyMedium
-                          ?.copyWith(color: colorScheme.onBackground.withOpacity(0.7)),
+                          ?.copyWith(color: colorScheme.onSurface.withOpacity(0.7)),
                     ),
                     if (kDebugMode) ...[
                       const SizedBox(height: 12),
@@ -199,7 +199,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
                       Text(
                         'We will send codes to the contact we have on file (${_emailForSetup!}).',
                         style: theme.textTheme.bodySmall
-                            ?.copyWith(color: colorScheme.onBackground.withOpacity(0.7)),
+                            ?.copyWith(color: colorScheme.onSurface.withOpacity(0.7)),
                       ),
                     ],
                     const SizedBox(height: 24),
@@ -244,7 +244,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
                       Text(
                         _statusMessage!,
                         style: theme.textTheme.bodySmall
-                            ?.copyWith(color: colorScheme.onBackground.withOpacity(0.7)),
+                            ?.copyWith(color: colorScheme.onSurface.withOpacity(0.7)),
                       ),
                     const SizedBox(height: 16),
                     FilledButton.icon(

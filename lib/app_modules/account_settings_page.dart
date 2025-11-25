@@ -141,7 +141,7 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
             child: ListTile(
               leading: CircleAvatar(
                 radius: 24,
-                backgroundImage: hasAvatar ? NetworkImage(avatarUrl!) : null,
+                backgroundImage: hasAvatar ? NetworkImage(avatarUrl) : null,
                 child: hasAvatar ? null : const Icon(Icons.person, size: 28),
               ),
               title: Text(_profile.name, style: text.titleMedium),

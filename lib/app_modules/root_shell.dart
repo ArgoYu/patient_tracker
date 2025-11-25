@@ -96,7 +96,7 @@ String _accountKeyFor(UserAccount? account) =>
     account?.id ?? _kGuestAccountId;
 
 String _discoveryKeyFor(String accountId) =>
-    '$_kDiscoveryPrefKey\_$accountId';
+    '${_kDiscoveryPrefKey}_$accountId';
 
 class _RootShellState extends State<RootShell> {
   static const int _kTabHome = 0;
@@ -1493,22 +1493,22 @@ List<CopingPlan> _buildDemoCopingPlans() => [
           'Thinking about old triggers',
         ],
         steps: [
-          CopingPlanStep(
+          const CopingPlanStep(
             description: 'Box breathing for 2 minutes',
             estimatedDuration: Duration(minutes: 2),
           ),
-          CopingPlanStep(
+          const CopingPlanStep(
             description: 'Step outside for fresh air',
             estimatedDuration: Duration(minutes: 5),
           ),
-          CopingPlanStep(
+          const CopingPlanStep(
             description: 'Call my support contact and share how I feel',
             estimatedDuration: Duration(minutes: 5),
           ),
         ],
         supportContacts: [
-          SupportContact(name: 'Coach Riley', phone: '+1-555-201-8842'),
-          SupportContact(name: 'Sponsor June', phone: '+1-555-433-0098'),
+          const SupportContact(name: 'Coach Riley', phone: '+1-555-201-8842'),
+          const SupportContact(name: 'Sponsor June', phone: '+1-555-433-0098'),
         ],
         safeLocations: ['Dorm common area', 'Campus wellness lounge'],
         checkInTime: const TimeOfDay(hour: 21, minute: 0),

@@ -312,7 +312,7 @@ class AuthService {
     required String email,
   }) async {
     final currentSession = _currentSession;
-    final methods = TwoFactorMethod.values;
+    const methods = TwoFactorMethod.values;
     _pendingSession = PendingTwoFactorSession(
       email: email,
       userId: userId,
@@ -413,9 +413,7 @@ class AuthService {
         await MockAuthApi.instance.hasCompletedGlobalOnboarding(userId: userId);
     final storedAccountJson = await _secureStorage.read(key: _accountKey);
     var account = UserAccount.tryFromJson(storedAccountJson);
-    if (account == null) {
-      account = await _buildFallbackAccount(userId);
-    }
+    account ??= await _buildFallbackAccount(userId);
     _currentSession = AuthSession(
       userId: userId,
       token: token,

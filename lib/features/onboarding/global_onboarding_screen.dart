@@ -778,7 +778,7 @@ class _PersonalInformation extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
-          value: selectedLanguage,
+          initialValue: selectedLanguage,
           decoration: const InputDecoration(
             labelText: 'Preferred language',
           ),
@@ -799,10 +799,10 @@ class _PersonalInformation extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
-          value: selectedPronouns,
-          decoration: InputDecoration(
+          initialValue: selectedPronouns,
+          decoration: const InputDecoration(
             labelText: 'Pronouns (optional)',
-            border: const OutlineInputBorder(),
+            border: OutlineInputBorder(),
           ),
           isExpanded: true,
           hint: const Text('Select'),
@@ -818,10 +818,10 @@ class _PersonalInformation extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
-          value: selectedTimeZone,
-          decoration: InputDecoration(
+          initialValue: selectedTimeZone,
+          decoration: const InputDecoration(
             labelText: 'Time zone / region (optional)',
-            border: const OutlineInputBorder(),
+            border: OutlineInputBorder(),
           ),
           isExpanded: true,
           hint: const Text('Select'),

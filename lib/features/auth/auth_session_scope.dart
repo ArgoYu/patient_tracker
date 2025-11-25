@@ -7,9 +7,9 @@ import 'user_account.dart';
 class AuthSessionScope extends InheritedNotifier<ValueListenable<UserAccount?>> {
   const AuthSessionScope({
     super.key,
-    required ValueListenable<UserAccount?> notifier,
-    required Widget child,
-  }) : super(notifier: notifier, child: child);
+    required ValueListenable<UserAccount?> super.notifier,
+    required super.child,
+  });
 
   ValueListenable<UserAccount?> get accountListenable =>
       notifier as ValueListenable<UserAccount?>;

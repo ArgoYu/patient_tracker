@@ -35,7 +35,7 @@ class UserAccount {
   factory UserAccount.fromJson(String source) {
     final map = jsonDecode(source);
     if (map is! Map<String, dynamic>) {
-      throw FormatException('Invalid UserAccount JSON');
+      throw const FormatException('Invalid UserAccount JSON');
     }
     return UserAccount.fromMap(map);
   }

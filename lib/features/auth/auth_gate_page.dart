@@ -441,7 +441,7 @@ class _AuthGatePageState extends State<AuthGatePage> {
                               'We have sent a 6-digit code to your email. Please enter it here to complete registration.',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color:
-                                    colorScheme.onBackground.withOpacity(0.7),
+                                    colorScheme.onSurface.withOpacity(0.7),
                               ),
                             ),
                           ],
