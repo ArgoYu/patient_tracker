@@ -870,27 +870,29 @@ class _CoveragePainter extends CustomPainter {
 
     canvas.drawArc(rect, 0, 2 * math.pi, false, backgroundPaint);
 
-    final coveragePaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round
-      ..shader = SweepGradient(
-        startAngle: -math.pi / 2,
-        endAngle: -math.pi / 2 + 2 * math.pi * coverage,
-        colors: [
-          coverageColor.withValues(alpha: 0.85),
-          coverageColor,
-        ],
-      ).createShader(rect);
+    if (coverage > 0) {
+      final coveragePaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round
+        ..shader = SweepGradient(
+          startAngle: -math.pi / 2,
+          endAngle: -math.pi / 2 + 2 * math.pi * coverage,
+          colors: [
+            coverageColor.withValues(alpha: 0.85),
+            coverageColor,
+          ],
+        ).createShader(rect);
 
-    final sweepAngle = 2 * math.pi * coverage;
-    canvas.drawArc(
-      rect,
-      -math.pi / 2,
-      sweepAngle,
-      false,
-      coveragePaint,
-    );
+      final sweepAngle = 2 * math.pi * coverage;
+      canvas.drawArc(
+        rect,
+        -math.pi / 2,
+        sweepAngle,
+        false,
+        coveragePaint,
+      );
+    }
   }
 
   @override

@@ -445,15 +445,25 @@ class _MessagesPageState extends State<MessagesPage> {
   bool _personalExpanded = true;
   bool _groupExpanded = true;
   bool _careExpanded = true;
-  late List<PersonalChatContact> _personalChats;
+  List<PersonalChatContact> _personalChats = [];
   final ScrollController _scrollController = ScrollController();
-  late final Map<ConversationType, GlobalKey> _careContactKeys;
+  final Map<ConversationType, GlobalKey> _careContactKeys = {};
   late final Map<PeerCommunity, GlobalKey> _groupTileKeys;
+  List<CareTeamMember> _careTeamMembers = [];
+  bool _careTeamLoading = true;
+  final List<PeerCommunity> _joinedGroupIds = [];
   ConversationType? _highlightedConversation;
   PeerCommunity? _highlightedGroup;
   ConversationType? _pendingHighlight;
   bool _routeArgsHandled = false;
   Timer? _highlightTimer;
+  late final ValueListenable<UserAccount?> _accountListenable;
+  late final ChatThreadsRepository _threadsRepository;
+  late final CareTeamRepository _careTeamRepository;
+  late final VoidCallback _accountListener;
+  bool _accountListenerSetup = false;
+  ChatThreads _persistedThreads = const ChatThreads.empty();
+  bool _threadsLoading = true;
 
   static const String _myInviteCode = 'argo-connect-2025';
   static const String _myInviteLink =
@@ -462,10 +472,6 @@ class _MessagesPageState extends State<MessagesPage> {
   @override
   void initState() {
     super.initState();
-    _personalChats = List<PersonalChatContact>.of(_initialPersonalChats);
-    _careContactKeys = {
-      for (final contact in _careTeamContacts) contact.type: GlobalKey()
-    };
     _groupTileKeys = {for (final group in _peerGroups) group.id: GlobalKey()};
     final initialTarget = widget.highlightConversation;
     _highlightedConversation =
@@ -503,6 +509,16 @@ class _MessagesPageState extends State<MessagesPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!_accountListenerSetup) {
+      _accountListenable = AuthSessionScope.of(context).accountListenable;
+      _threadsRepository = ChatThreadsRepository(_accountListenable);
+      _careTeamRepository = CareTeamRepository(_accountListenable);
+      _accountListener = _handleAccountChanged;
+      _accountListenable.addListener(_accountListener);
+      _accountListenerSetup = true;
+      _loadThreads();
+      _loadCareTeamMembers();
+    }
     if (_routeArgsHandled) return;
     _routeArgsHandled = true;
     final route = ModalRoute.of(context);
@@ -523,6 +539,9 @@ class _MessagesPageState extends State<MessagesPage> {
 
   @override
   void dispose() {
+    if (_accountListenerSetup) {
+      _accountListenable.removeListener(_accountListener);
+    }
     _scrollController.dispose();
     _highlightTimer?.cancel();
     super.dispose();
@@ -590,7 +609,134 @@ class _MessagesPageState extends State<MessagesPage> {
     }
     setState(() => _personalChats.insert(0, contact));
     showToast(context, '${contact.name} added to personal chats.');
+    if (!_isDemoAccount) {
+      final saved = _savedForContact(contact);
+      final updated = _persistedThreads.copyWith(
+        personalChats: [saved, ..._persistedThreads.personalChats],
+      );
+      _persistThreads(updated);
+    }
   }
+
+  void _handleAccountChanged() {
+    _loadThreads();
+    _loadCareTeamMembers();
+  }
+
+  Future<void> _loadThreads() async {
+    setState(() => _threadsLoading = true);
+    final threads = await _threadsRepository.loadThreads();
+    if (!mounted) return;
+    setState(() {
+      _persistedThreads = threads;
+      _syncChatsFromThreads();
+      _threadsLoading = false;
+    });
+  }
+
+  Future<void> _loadCareTeamMembers() async {
+    setState(() => _careTeamLoading = true);
+    final members = await _careTeamRepository.loadMembers();
+    if (!mounted) return;
+    setState(() {
+      _careTeamMembers = members;
+      _careTeamLoading = false;
+    });
+  }
+
+  void _syncChatsFromThreads() {
+    if (_isDemoAccount) {
+      _personalChats = List<PersonalChatContact>.of(_initialPersonalChats);
+      _joinedGroupIds
+        ..clear()
+        ..addAll(PeerCommunity.values);
+      return;
+    }
+
+    _personalChats = _persistedThreads.personalChats
+        .map(_personalChatFromSaved)
+        .toList();
+    _joinedGroupIds
+      ..clear()
+      ..addAll(
+        _persistedThreads.groupIds
+            .map(_peerCommunityFromId)
+            .whereType<PeerCommunity>(),
+      );
+  }
+
+  PersonalChatContact _personalChatFromSaved(SavedPersonalChat saved) {
+    final type = PersonalChatType.values.firstWhere(
+      (value) => value.name == saved.type,
+      orElse: () => PersonalChatType.custom,
+    );
+    if (type != PersonalChatType.custom) {
+      for (final seeded in personalChatContacts) {
+        if (seeded.type == type) {
+          return seeded;
+        }
+      }
+    }
+    return _createPersonalChatFromHandle(
+      saved.handle,
+      displayName: saved.displayName,
+      subtitle: saved.subtitle,
+    );
+  }
+
+  PeerCommunity? _peerCommunityFromId(String id) {
+    for (final community in PeerCommunity.values) {
+      if (community.name == id) {
+        return community;
+      }
+    }
+    return null;
+  }
+
+  _PeerGroup? _peerGroupFor(PeerCommunity id) {
+    for (final group in _peerGroups) {
+      if (group.id == id) {
+        return group;
+      }
+    }
+    return null;
+  }
+
+  List<_PeerGroup> get _displayedGroupChats {
+    final seen = <PeerCommunity>{};
+    final groups = <_PeerGroup>[];
+    for (final id in _joinedGroupIds) {
+      final group = _peerGroupFor(id);
+      if (group != null && seen.add(id)) {
+        groups.add(group);
+      }
+    }
+    return groups;
+  }
+
+  SavedPersonalChat _savedForContact(PersonalChatContact contact) {
+    return SavedPersonalChat(
+      type: contact.type.name,
+      handle: (contact.contactId ?? contact.name).trim(),
+      displayName: contact.name,
+      subtitle: contact.subtitle,
+    );
+  }
+
+  void _persistThreads(ChatThreads threads) {
+    _persistedThreads = threads;
+    unawaited(_threadsRepository.saveThreads(threads));
+  }
+
+  bool get _isDemoAccount => _accountListenable.value?.isDemo ?? false;
+
+  bool get _hasAnyConversations =>
+      _personalChats.isNotEmpty || _displayedGroupChats.isNotEmpty;
+
+  bool get _shouldShowEmptyState =>
+      !_isDemoAccount && !_threadsLoading && !_hasAnyConversations;
+
+  void _onStartNewChat() => _showQuickActionsSheet();
 
   void _maybeTriggerHighlight() {
     final target = _pendingHighlight;
@@ -682,6 +828,22 @@ class _MessagesPageState extends State<MessagesPage> {
         return Colors.blueAccent;
     }
   }
+
+  IconData _careTeamIcon(ConversationType type) => switch (type) {
+        ConversationType.coach => Icons.support_agent,
+        ConversationType.peer => Icons.handshake_outlined,
+        ConversationType.physician => Icons.local_hospital,
+        ConversationType.nurse => Icons.volunteer_activism,
+        ConversationType.group => Icons.groups_3_outlined,
+      };
+
+  Color _careTeamAccentColor(ConversationType type) => switch (type) {
+        ConversationType.coach => const Color(0xFF3B82F6),
+        ConversationType.peer => const Color(0xFFFB923C),
+        ConversationType.physician => const Color(0xFF6366F1),
+        ConversationType.nurse => const Color(0xFF10B981),
+        ConversationType.group => const Color(0xFF14B8A6),
+      };
 
   String? _highlightMessage(ConversationType type) => switch (type) {
         ConversationType.peer => "Here’s your peer chat 👋",
@@ -836,10 +998,7 @@ class _MessagesPageState extends State<MessagesPage> {
                         trailing: const Icon(Icons.add),
                         onTap: () {
                           navigator.pop();
-                          showToast(
-                            parentContext,
-                            'Joined ${group.title}',
-                          );
+                          _joinGroup(group.id);
                         },
                       );
                     },
@@ -897,6 +1056,14 @@ class _MessagesPageState extends State<MessagesPage> {
     );
   }
 
+  void _onCareTeamMemberTap(BuildContext context, CareTeamMember member) {
+    _openCareTeamChat(context, member.type);
+  }
+
+  void _onAddCareTeamMember() {
+    _showQuickActionsSheet();
+  }
+
   void _openPersonalChat(PersonalChatContact chat) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -906,6 +1073,7 @@ class _MessagesPageState extends State<MessagesPage> {
   }
 
   Widget _buildPersonalChatsSection(ThemeData theme) {
+    final hasPersonal = _personalChats.isNotEmpty;
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       child: Theme(
@@ -917,27 +1085,69 @@ class _MessagesPageState extends State<MessagesPage> {
           leading: Icon(Icons.person_outline, color: theme.colorScheme.primary),
           title: const Text('Personal chats'),
           subtitle: Text('${_personalChats.length} conversations'),
-          children: [
-            for (final chat in _personalChats)
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: ChatTile(
-                  icon: chat.icon,
-                  iconBackgroundColor: chat.color.withValues(alpha: 0.18),
-                  iconColor: chat.color,
-                  title: chat.name,
-                  subtitle: chat.subtitle,
-                  onTap: () => _openPersonalChat(chat),
-                ),
-              ),
-          ],
+          children: hasPersonal
+              ? [
+                  for (final chat in _personalChats)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      child: ChatTile(
+                        icon: chat.icon,
+                        iconBackgroundColor: chat.color.withValues(alpha: 0.18),
+                        iconColor: chat.color,
+                        title: chat.name,
+                        subtitle: chat.subtitle,
+                        onTap: () => _openPersonalChat(chat),
+                      ),
+                    ),
+                ]
+              : [
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    child: Text(
+                      'You don’t have any personal chats yet.\nTap + to start one.',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: TextButton(
+                      onPressed: () => _showAddFriendSheet(context),
+                      child: const Text('Add a friend'),
+                    ),
+                  ),
+                ],
         ),
       ),
     );
   }
 
+  void _joinGroup(PeerCommunity community) {
+    if (_joinedGroupIds.contains(community)) {
+      final title = _peerGroupFor(community)?.title ?? community.name;
+      showToast(context, 'You’re already in $title.');
+      return;
+    }
+    setState(() {
+      _joinedGroupIds.insert(0, community);
+      _groupExpanded = true;
+    });
+    if (!_isDemoAccount) {
+      final ids = [
+        community.name,
+        ..._persistedThreads.groupIds.where((id) => id != community.name),
+      ];
+      _persistThreads(_persistedThreads.copyWith(groupIds: ids));
+    }
+    final title = _peerGroupFor(community)?.title ?? community.name;
+    showToast(context, 'Joined $title');
+  }
+
   Widget _buildGroupChatsSection(ThemeData theme) {
+    final groupChats = _displayedGroupChats;
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       child: Theme(
@@ -948,11 +1158,31 @@ class _MessagesPageState extends State<MessagesPage> {
           leading:
               Icon(Icons.groups_outlined, color: theme.colorScheme.primary),
           title: const Text('Group chats'),
-          subtitle: Text('${_peerGroups.length} active groups'),
-          children: [
-            for (final group in _peerGroups)
-              _buildGroupTile(context, theme, group),
-          ],
+          subtitle: Text('${groupChats.length} active groups'),
+          children: groupChats.isNotEmpty
+              ? [
+                  for (final group in groupChats)
+                    _buildGroupTile(context, theme, group),
+                ]
+              : [
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 16),
+                    child: Text(
+                      'You don’t have any group chats yet.\nTap + to join one.',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: TextButton(
+                      onPressed: () => _showJoinGroupSheet(context),
+                      child: const Text('Join a group'),
+                    ),
+                  ),
+                ],
         ),
       ),
     );
@@ -1033,11 +1263,14 @@ class _MessagesPageState extends State<MessagesPage> {
     BuildContext context,
     ThemeData theme,
     bool isDark,
-    _ChatContact contact,
+    CareTeamMember member,
   ) {
-    final key = _careContactKeys[contact.type];
-    final isHighlighted = _highlightedConversation == contact.type;
-    final highlightColor = _highlightAccent(contact.type);
+    final key = _careContactKeys.putIfAbsent(
+      member.type,
+      () => GlobalKey(),
+    );
+    final isHighlighted = _highlightedConversation == member.type;
+    final highlightColor = _highlightAccent(member.type);
     final gradient = isHighlighted
         ? LinearGradient(
             colors: [
@@ -1051,6 +1284,7 @@ class _MessagesPageState extends State<MessagesPage> {
     final outerPadding =
         isHighlighted ? const EdgeInsets.all(2) : EdgeInsets.zero;
 
+    final contactColor = _careTeamAccentColor(member.type);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: AnimatedContainer(
@@ -1079,13 +1313,13 @@ class _MessagesPageState extends State<MessagesPage> {
               : null,
         ),
         child: ChatTile(
-          icon: contact.icon,
+          icon: _careTeamIcon(member.type),
           iconBackgroundColor:
-              contact.color.withValues(alpha: isDark ? 0.28 : 0.14),
-          iconColor: contact.color,
-          title: contact.name,
-          subtitle: contact.role,
-          onTap: () => _openCareTeamChat(context, contact.type),
+              contactColor.withValues(alpha: isDark ? 0.28 : 0.14),
+          iconColor: contactColor,
+          title: member.name,
+          subtitle: member.role,
+          onTap: () => _onCareTeamMemberTap(context, member),
           backgroundColor: theme.colorScheme.surface,
           boxShadow: isHighlighted
               ? const []
@@ -1102,6 +1336,14 @@ class _MessagesPageState extends State<MessagesPage> {
   }
 
   Widget _buildCareTeamSection(ThemeData theme, bool isDark) {
+    if (_careTeamLoading) {
+      return _buildCareTeamLoadingSection(theme);
+    }
+
+    if (_careTeamMembers.isEmpty) {
+      return _buildEmptyCareTeamSection(theme);
+    }
+
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       child: Theme(
@@ -1112,10 +1354,84 @@ class _MessagesPageState extends State<MessagesPage> {
           leading: Icon(Icons.medical_services_outlined,
               color: theme.colorScheme.primary),
           title: const Text('Care team'),
-          subtitle: Text('${_careTeamContacts.length} members'),
+          subtitle: Text('${_careTeamMembers.length} members'),
           children: [
-            for (final contact in _careTeamContacts)
-              _buildCareTeamTile(context, theme, isDark, contact),
+            for (final member in _careTeamMembers)
+              _buildCareTeamTile(context, theme, isDark, member),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCareTeamLoadingSection(ThemeData theme) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Care team',
+                    style: theme.textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Loading members…',
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: theme.hintColor),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyCareTeamSection(ThemeData theme) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Care team',
+              style:
+                  theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'You don’t have any care team members yet.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Tap + to add your doctor, therapist, or support group.',
+              style:
+                  theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: _onAddCareTeamMember,
+                child: const Text('Add care member'),
+              ),
+            ),
           ],
         ),
       ),
@@ -1126,6 +1442,36 @@ class _MessagesPageState extends State<MessagesPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    if (_shouldShowEmptyState) {
+      return Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          title: const Text('Messages'),
+          actions: [
+            IconButton(
+              tooltip: 'Quick actions',
+              icon: const Icon(Icons.add_circle_outline),
+              onPressed: _showQuickActionsSheet,
+            ),
+          ],
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              'You don’t have any conversations yet.\nTap + to start a new chat.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: _onStartNewChat,
+          child: const Icon(Icons.add),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(

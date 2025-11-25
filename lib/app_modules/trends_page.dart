@@ -46,13 +46,52 @@ class TrendsPage extends StatelessWidget {
       ..sort((a, b) => b.date.compareTo(a.date));
     final labsSorted = List<LabResult>.from(labs)
       ..sort((a, b) => b.collectedOn.compareTo(a.collectedOn));
+    final hasAnyData =
+        entries.isNotEmpty || vitalsSorted.isNotEmpty || labsSorted.isNotEmpty;
+    final appBar = AppBar(
+      title: const Text('Trends'),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+    );
+
+    if (!hasAnyData) {
+      return Scaffold(
+        appBar: appBar,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.show_chart,
+                    size: 48, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(height: 16),
+                Text(
+                  'Let’s start tracking your mood and vitals',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Log a feeling, take your vitals, or record a lab result and this page will show your trend insights.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(color: Colors.black54),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Trends'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
+      appBar: appBar,
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

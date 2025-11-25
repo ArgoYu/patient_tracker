@@ -108,13 +108,54 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
     _timers[index] = Timer(target.difference(now), () => _fireReminder(index));
   }
 
+  AppBar _buildAppBar() => AppBar(
+        title: const Text('Rx Suggestions'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      );
+
+  Widget _buildEmptyState(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.medication_outlined,
+                size: 48, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(height: 16),
+            Text(
+              'No medication suggestions yet.',
+              style: Theme.of(context).textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w600),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Once your care team assigns a prescription or you add one manually, it will show up here with suggested check-ins and reminders.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: Colors.black54),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.meds.isEmpty) {
+      return Scaffold(
+        appBar: _buildAppBar(),
+        body: _buildEmptyState(context),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(
-          title: const Text('Rx Suggestions'),
-          backgroundColor: Colors.transparent,
-          elevation: 0),
+      appBar: _buildAppBar(),
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: widget.meds.length,

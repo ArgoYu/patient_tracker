@@ -14,8 +14,6 @@ class CareTeamMessagesPage extends StatefulWidget {
   State<CareTeamMessagesPage> createState() => _CareTeamMessagesPageState();
 }
 
-enum ConversationType { coach, physician, nurse, peer, group }
-
 class _ChatContact {
   const _ChatContact({
     required this.type,

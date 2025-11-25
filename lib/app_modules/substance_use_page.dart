@@ -689,6 +689,34 @@ class _SubstanceUseDisorderPageState extends State<SubstanceUseDisorderPage> {
                     onSharePlan: (plan) => widget.onSharePlan(plan),
                     onEditPlan: (plan) => _editCopingPlan(context, plan),
                   ),
+                ] else ...[
+                  const SizedBox(height: spacing),
+                  Glass(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Build your coping plan',
+                            style: theme.textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'No coping plans set yet. Create one to stay ready when cravings arrive.',
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 12),
+                          FilledButton.icon(
+                            onPressed: () => _openCopingPlanPage(context),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Create plan'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
                 const SizedBox(height: spacing),
                 Wrap(
