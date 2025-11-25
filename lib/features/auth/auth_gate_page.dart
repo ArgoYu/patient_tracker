@@ -432,7 +432,7 @@ class _AuthGatePageState extends State<AuthGatePage> {
               Text(
                 'We have sent a 6-digit code to your email. Please enter it here to complete registration.',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onBackground.withOpacity(0.7),
+                  color: colorScheme.onSurface.withOpacity(0.7),
                 ),
               ),
             ],
@@ -500,7 +500,7 @@ class _AuthGatePageState extends State<AuthGatePage> {
               statusText,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onBackground.withOpacity(0.75),
+                color: colorScheme.onSurface.withOpacity(0.75),
               ),
             ),
             const SizedBox(height: 16),
@@ -533,7 +533,7 @@ class _AuthGatePageState extends State<AuthGatePage> {
         : 'Sign up to unlock the main app experience.';
 
     return Scaffold(
-      backgroundColor: colorScheme.background,
+      backgroundColor: colorScheme.surface,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -556,7 +556,7 @@ class _AuthGatePageState extends State<AuthGatePage> {
                   Text(
                     subtitle,
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: colorScheme.onBackground.withOpacity(0.7),
+                      color: colorScheme.onSurface.withOpacity(0.7),
                     ),
                   ),
                   const SizedBox(height: 20),

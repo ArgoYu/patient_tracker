@@ -39,7 +39,7 @@ class _TwoFactorSuccessScreenState extends State<TwoFactorSuccessScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     return Scaffold(
-      backgroundColor: colorScheme.background,
+      backgroundColor: colorScheme.surface,
       body: SafeArea(
         child: Center(
           child: Column(
@@ -60,7 +60,7 @@ class _TwoFactorSuccessScreenState extends State<TwoFactorSuccessScreen> {
                 'Two-factor verification succeeded.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onBackground.withOpacity(0.7)),
+                    color: colorScheme.onSurface.withOpacity(0.7)),
               ),
               const SizedBox(height: 32),
               const SizedBox(

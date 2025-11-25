@@ -195,7 +195,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
               Text(
                 'We need one more proof of identity before giving you access.',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onBackground.withOpacity(0.7)),
+                    color: colorScheme.onSurface.withOpacity(0.7)),
               ),
               const SizedBox(height: 24),
               if (_isDemoUser)
@@ -251,7 +251,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
                 Text(
                   _statusMessage!,
                   style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onBackground.withOpacity(0.7)),
+                      color: colorScheme.onSurface.withOpacity(0.7)),
                 ),
               const SizedBox(height: 16),
               Row(

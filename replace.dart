@@ -1,7 +1,7 @@
 import 'dart:io';
 
 void main() {
-  final path = 'lib/app_modules/my_ai_page.dart';
+  const path = 'lib/app_modules/my_ai_page.dart';
   final text = File(path).readAsStringSync();
 
   const startMarker = '    return _DetailCard(';

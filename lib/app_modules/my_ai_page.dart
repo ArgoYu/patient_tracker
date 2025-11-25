@@ -1984,7 +1984,7 @@ class _SessionOutputItem extends StatelessWidget {
         enabled ? colorScheme.primary : colorScheme.onSurfaceVariant;
     final arrowColor =
         enabled ? colorScheme.primary : colorScheme.onSurfaceVariant;
-    final backgroundColor = colorScheme.surfaceVariant;
+    final backgroundColor = colorScheme.surfaceContainerHighest;
     final borderColor = colorScheme.outlineVariant.withOpacity(0.4);
 
     return AnimatedOpacity(

@@ -149,7 +149,7 @@ class _BiometricOptInScreenState extends State<BiometricOptInScreen> {
               Text(
                 'Your account is ready. Enable Face ID or fingerprint to skip entering your password and 2FA on this device.',
                 style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: colorScheme.onBackground.withOpacity(0.7)),
+                    ?.copyWith(color: colorScheme.onSurface.withOpacity(0.7)),
               ),
               const SizedBox(height: 20),
               SwitchListTile(
