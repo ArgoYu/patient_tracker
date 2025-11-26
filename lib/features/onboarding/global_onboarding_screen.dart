@@ -169,6 +169,7 @@ class _GlobalOnboardingScreenState extends State<GlobalOnboardingScreen> {
         pronouns: _selectedPronouns,
         timeZone: _selectedTimeZone,
       );
+      await AuthService.instance.refreshCurrentUserAccount();
       await _completeOnboarding(
         onComplete: (authEmail) async {
           if (!mounted) return;

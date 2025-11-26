@@ -575,15 +575,24 @@ class _RootShellState extends State<RootShell> {
   void _handleAccountChanged() {
     final account = _accountListenable.value;
     final key = _accountKeyFor(account);
-    if (key == _currentAccountId) return;
-    final data = _accountDataRepository.forAccount(account);
-    if (!mounted) return;
-    setState(() {
-      _accountData = data;
-      _currentAccountId = key;
-      _showFeatureDiscovery = false;
-    });
-    _loadFeatureDiscoveryFlag(key);
+    if (key != _currentAccountId) {
+      final data = _accountDataRepository.forAccount(account);
+      if (!mounted) return;
+      setState(() {
+        _accountData = data;
+        _currentAccountId = key;
+        _showFeatureDiscovery = false;
+      });
+      _loadFeatureDiscoveryFlag(key);
+      return;
+    }
+    if (account != null && _accountData.profile.name != account.displayName) {
+      if (!mounted) return;
+      setState(() {
+        _accountData.profile =
+            _accountData.profile.copyWith(name: account.displayName);
+      });
+    }
   }
 
   Future<void> _loadFeatureDiscoveryFlag(String accountId) async {

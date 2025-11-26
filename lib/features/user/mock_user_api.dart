@@ -1,7 +1,10 @@
+import '../../shared/language_preferences.dart';
+
 class UserProfile {
   const UserProfile({
     required this.userId,
-    required this.preferredName,
+    required this.legalName,
+    this.preferredName,
     required this.preferredLanguage,
     this.pronouns,
     this.timeZone,
@@ -9,11 +12,31 @@ class UserProfile {
   });
 
   final String userId;
-  final String preferredName;
+  final String legalName;
+  final String? preferredName;
   final String preferredLanguage;
   final String? pronouns;
   final String? timeZone;
   final DateTime updatedAt;
+
+  UserProfile copyWith({
+    String? legalName,
+    String? preferredName,
+    String? preferredLanguage,
+    String? pronouns,
+    String? timeZone,
+    DateTime? updatedAt,
+  }) {
+    return UserProfile(
+      userId: userId,
+      legalName: legalName ?? this.legalName,
+      preferredName: preferredName ?? this.preferredName,
+      preferredLanguage: preferredLanguage ?? this.preferredLanguage,
+      pronouns: pronouns ?? this.pronouns,
+      timeZone: timeZone ?? this.timeZone,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 }
 
 class MockUserApi {
@@ -28,6 +51,23 @@ class MockUserApi {
     return _profiles[userId];
   }
 
+  Future<void> registerProfile({
+    required String userId,
+    required String legalName,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 160));
+    final existing = _profiles[userId];
+    _profiles[userId] = UserProfile(
+      userId: userId,
+      legalName: legalName.trim(),
+      preferredName: existing?.preferredName,
+      preferredLanguage: existing?.preferredLanguage ?? LanguagePreferences.fallbackLanguageCode,
+      pronouns: existing?.pronouns,
+      timeZone: existing?.timeZone,
+      updatedAt: DateTime.now(),
+    );
+  }
+
   Future<void> updateProfile({
     required String userId,
     required String preferredName,
@@ -36,13 +76,25 @@ class MockUserApi {
     String? timeZone,
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 220));
-    _profiles[userId] = UserProfile(
-      userId: userId,
-      preferredName: preferredName,
-      preferredLanguage: preferredLanguage,
-      pronouns: pronouns,
-      timeZone: timeZone,
-      updatedAt: DateTime.now(),
-    );
+    final existing = _profiles[userId];
+    if (existing != null) {
+      _profiles[userId] = existing.copyWith(
+        preferredName: preferredName.trim(),
+        preferredLanguage: preferredLanguage,
+        pronouns: pronouns,
+        timeZone: timeZone,
+        updatedAt: DateTime.now(),
+      );
+    } else {
+      _profiles[userId] = UserProfile(
+        userId: userId,
+        legalName: preferredName.trim(),
+        preferredName: preferredName.trim(),
+        preferredLanguage: preferredLanguage,
+        pronouns: pronouns,
+        timeZone: timeZone,
+        updatedAt: DateTime.now(),
+      );
+    }
   }
 }

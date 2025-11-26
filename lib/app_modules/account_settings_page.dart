@@ -126,6 +126,10 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
     final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
     final mrn = _profile.patientId;
     final colorScheme = theme.colorScheme;
+    final userAccount = AuthSessionScope.of(context).currentUserAccount;
+    final displayName = userAccount?.displayName ?? _profile.name;
+    final preferredDisplayName = userAccount?.preferredName ?? displayName;
+    final legalNameValue = userAccount?.legalName;
 
     return Scaffold(
       appBar: AppBar(
@@ -138,15 +142,31 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
         children: [
           const _SectionLabel('Profile'),
           Glass(
-            child: ListTile(
-              leading: CircleAvatar(
-                radius: 24,
-                backgroundImage: hasAvatar ? NetworkImage(avatarUrl) : null,
-                child: hasAvatar ? null : const Icon(Icons.person, size: 28),
-              ),
-              title: Text(_profile.name, style: text.titleMedium),
-              subtitle: Text(mrn),
-              trailing: const Text('Read-only'),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: CircleAvatar(
+                    radius: 24,
+                    backgroundImage: hasAvatar ? NetworkImage(avatarUrl) : null,
+                    child: hasAvatar ? null : const Icon(Icons.person, size: 28),
+                  ),
+                  title: Text(displayName, style: text.titleMedium),
+                  subtitle: Text(mrn),
+                  trailing: const Text('Read-only'),
+                ),
+                const Divider(height: 0),
+                _NameDetailRow(
+                  icon: Icons.person,
+                  label: 'Preferred name',
+                  value: preferredDisplayName,
+                ),
+                const Divider(height: 0),
+                _NameDetailRow(
+                  icon: Icons.badge_outlined,
+                  label: 'Legal name',
+                  value: legalNameValue ?? 'Not provided',
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 20),
@@ -224,6 +244,30 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _NameDetailRow extends StatelessWidget {
+  const _NameDetailRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(label, style: text.bodyLarge),
+      subtitle: Text(value, style: text.bodyMedium),
+      trailing: const Text('Read-only'),
+      visualDensity: VisualDensity.compact,
     );
   }
 }

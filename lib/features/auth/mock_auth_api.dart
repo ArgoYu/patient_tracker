@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import '../user/mock_user_api.dart';
 import 'demo_credentials.dart';
 import 'user_identity.dart';
 
@@ -47,6 +48,7 @@ class MockAuthApi {
   Future<void> register({
     required String email,
     required String password,
+    required String legalName,
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 400));
     // In a real implementation we would persist the user and return tokens.
@@ -54,6 +56,10 @@ class MockAuthApi {
     final userId = _userIdForEmail(email);
     _onboardingCompleted[userId] = false;
     _twoFactorEnabled[userId] = false;
+    await MockUserApi.instance.registerProfile(
+      userId: userId,
+      legalName: legalName,
+    );
   }
 
   Future<bool> hasCompletedGlobalOnboarding({

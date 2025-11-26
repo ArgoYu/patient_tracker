@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../shared/prefs_keys.dart';
+import '../user/mock_user_api.dart';
 import 'demo_credentials.dart';
 import 'mock_auth_api.dart';
 import 'user_account.dart' hide isDemoAccount;
@@ -241,7 +242,7 @@ class AuthService {
     _currentUserIsDemo = isDemoLogin;
     final account = isDemoLogin
         ? demoUserAccount
-        : _buildAccount(
+        : await _buildAccount(
             userId: userId,
             email: email,
             displayName: displayName,
@@ -313,6 +314,11 @@ class AuthService {
   }) async {
     final currentSession = _currentSession;
     const methods = TwoFactorMethod.values;
+    final fallbackAccount = currentSession?.userAccount ??
+        await _buildAccount(
+          userId: userId,
+          email: email,
+        );
     _pendingSession = PendingTwoFactorSession(
       email: email,
       userId: userId,
@@ -324,12 +330,7 @@ class AuthService {
       hasCompletedGlobalOnboarding:
           currentSession?.hasCompletedGlobalOnboarding ?? false,
       flowType: TwoFactorFlowType.enrollment,
-      userAccount: currentSession?.userAccount ??
-          _buildAccount(
-            userId: userId,
-            email: email,
-            displayName: null,
-          ),
+      userAccount: fallbackAccount,
     );
     _pendingCode = null;
   }
@@ -412,8 +413,12 @@ class AuthService {
     final hasCompletedOnboarding =
         await MockAuthApi.instance.hasCompletedGlobalOnboarding(userId: userId);
     final storedAccountJson = await _secureStorage.read(key: _accountKey);
-    var account = UserAccount.tryFromJson(storedAccountJson);
-    account ??= await _buildFallbackAccount(userId);
+    final storedAccount = UserAccount.tryFromJson(storedAccountJson);
+    final account = await _buildFallbackAccount(
+      userId,
+      email: storedAccount?.email,
+      displayName: storedAccount?.displayName,
+    );
     _currentSession = AuthSession(
       userId: userId,
       token: token,
@@ -470,30 +475,60 @@ class AuthService {
     _accountNotifier.value = account;
   }
 
-  UserAccount _buildAccount({
+  Future<void> refreshCurrentUserAccount() async {
+    final current = _currentSession;
+    if (current == null) return;
+    final refreshedAccount = await _buildAccount(
+      userId: current.userId,
+      email: current.userAccount.email,
+      displayName: current.userAccount.displayName,
+    );
+    _currentSession = current.copyWith(userAccount: refreshedAccount);
+    _updateCurrentAccount(refreshedAccount);
+    if (_currentSession?.rememberMe ?? false) {
+      await _persistSession(_currentSession!);
+    }
+  }
+
+  Future<UserAccount> _buildAccount({
     required String userId,
     required String email,
     String? displayName,
-  }) {
-    final trimmedName = displayName?.trim();
-    final name = (trimmedName?.isNotEmpty ?? false)
-        ? trimmedName!
-        : _suggestDisplayName(email);
+  }) async {
+    final profile = await MockUserApi.instance.fetchProfile(userId: userId);
+    final legalName = _normalizeName(profile?.legalName);
+    final preferredName = _normalizeName(profile?.preferredName);
+    final fallback = _normalizeName(displayName);
+    final finalName = preferredName ??
+        legalName ??
+        fallback ??
+        _suggestDisplayName(email);
     return UserAccount(
       id: userId,
       email: email,
-      displayName: name,
+      displayName: finalName,
+      legalName: legalName,
+      preferredName: preferredName,
     );
   }
 
-  Future<UserAccount> _buildFallbackAccount(String userId) async {
+  String? _normalizeName(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+    return trimmed;
+  }
+
+  Future<UserAccount> _buildFallbackAccount(
+    String userId, {
+    String? email,
+    String? displayName,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
-    final storedEmail = prefs.getString(PrefsKeys.authEmail) ?? '';
-    final name = _suggestDisplayName(storedEmail);
-    return UserAccount(
-      id: userId,
+    final storedEmail = email ?? prefs.getString(PrefsKeys.authEmail) ?? '';
+    return await _buildAccount(
+      userId: userId,
       email: storedEmail,
-      displayName: name,
+      displayName: displayName,
     );
   }
 

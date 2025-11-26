@@ -40,7 +40,7 @@ class ChatThreadsRepository {
     ),
   ];
 
-  static final ChatThreads _demoChatThreads = ChatThreads(
+  static const ChatThreads _demoChatThreads = ChatThreads(
     personalChats: _demoPersonalChats,
     groupIds: _demoGroupIds,
   );

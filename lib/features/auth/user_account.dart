@@ -8,11 +8,15 @@ class UserAccount {
     required this.id,
     required this.email,
     required this.displayName,
+    this.legalName,
+    this.preferredName,
   });
 
   final String id;
   final String email;
   final String displayName;
+  final String? legalName;
+  final String? preferredName;
 
   bool get isDemo => id == demoAccountId;
 
@@ -20,6 +24,8 @@ class UserAccount {
         'id': id,
         'email': email,
         'displayName': displayName,
+        'legalName': legalName,
+        'preferredName': preferredName,
       };
 
   factory UserAccount.fromMap(Map<String, dynamic> map) {
@@ -27,6 +33,8 @@ class UserAccount {
       id: map['id'] as String? ?? '',
       email: map['email'] as String? ?? '',
       displayName: map['displayName'] as String? ?? '',
+      legalName: map['legalName'] as String?,
+      preferredName: map['preferredName'] as String?,
     );
   }
 
@@ -55,11 +63,14 @@ class UserAccount {
     return other is UserAccount &&
         other.id == id &&
         other.email == email &&
-        other.displayName == displayName;
+        other.displayName == displayName &&
+        other.legalName == legalName &&
+        other.preferredName == preferredName;
   }
 
   @override
-  int get hashCode => Object.hash(id, email, displayName);
+  int get hashCode =>
+      Object.hash(id, email, displayName, legalName, preferredName);
 }
 
 bool isDemoAccount(UserAccount? account) => account?.isDemo ?? false;

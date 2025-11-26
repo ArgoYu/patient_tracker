@@ -9,6 +9,8 @@ const demoUserAccount = UserAccount(
   id: demoAccountId,
   email: demoEmail,
   displayName: 'Argo',
+  legalName: 'Argo',
+  preferredName: 'Argo',
 );
 
 bool isDemoAccount({

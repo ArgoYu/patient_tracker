@@ -26,7 +26,7 @@ class _AuthGatePageState extends State<AuthGatePage> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmController = TextEditingController();
   final TextEditingController _codeController = TextEditingController();
-  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _legalNameController = TextEditingController();
 
   bool _isLogin = true;
   bool _busy = false;
@@ -44,7 +44,7 @@ class _AuthGatePageState extends State<AuthGatePage> {
     _passwordController.dispose();
     _confirmController.dispose();
     _codeController.dispose();
-    _nameController.dispose();
+    _legalNameController.dispose();
     _timer?.cancel();
     super.dispose();
   }
@@ -137,7 +137,7 @@ class _AuthGatePageState extends State<AuthGatePage> {
       _emailController.text = demoEmail;
       _passwordController.text = demoPassword;
       _confirmController.text = demoPassword;
-      _nameController.text = demoUserAccount.displayName;
+      _legalNameController.text = demoUserAccount.displayName;
       _codeController.clear();
       _rememberMe = true;
       _codeSent = false;
@@ -151,7 +151,7 @@ class _AuthGatePageState extends State<AuthGatePage> {
     final password = _passwordController.text;
     final confirm = _confirmController.text;
     final code = _codeController.text.trim();
-    final displayName = _nameController.text.trim();
+    final legalName = _legalNameController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
       setState(() {
@@ -183,9 +183,9 @@ class _AuthGatePageState extends State<AuthGatePage> {
       });
       return;
     }
-    if (!_isLogin && displayName.isEmpty) {
+    if (!_isLogin && legalName.isEmpty) {
       setState(() {
-        _error = 'Enter a name so we can personalize your experience.';
+        _error = 'Enter your legal name to continue.';
       });
       return;
     }
@@ -217,12 +217,16 @@ class _AuthGatePageState extends State<AuthGatePage> {
         });
         return;
       }
-      await MockAuthApi.instance.register(email: email, password: password);
+      await MockAuthApi.instance.register(
+        email: email,
+        password: password,
+        legalName: legalName,
+      );
       final result = await AuthService.instance.login(
         email: email,
         password: password,
         rememberMe: _rememberMe,
-        displayName: displayName,
+        displayName: legalName,
         showGlobalOnboarding: true,
       );
       await _completeLogin(email, result);
@@ -367,11 +371,11 @@ class _AuthGatePageState extends State<AuthGatePage> {
                           if (!_isLogin) ...[
                             const SizedBox(height: 12),
                             TextField(
-                              controller: _nameController,
+                              controller: _legalNameController,
                               textCapitalization: TextCapitalization.words,
                               autofillHints: const [AutofillHints.name],
                               decoration: const InputDecoration(
-                                labelText: 'Name',
+                                labelText: 'Legal name',
                                 prefixIcon: Icon(Icons.person_outline),
                               ),
                             ),
