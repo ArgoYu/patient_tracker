@@ -83,7 +83,7 @@ class _MyAiPageState extends State<MyAiPage> {
                 children: [
                   AiFeatureCard(
                     icon: Icons.groups_2_outlined,
-                    title: 'AI Co-Consult',
+                    title: 'Echo AI',
                     subtitle: summaries['coConsult'] ??
                         'Collaborate with AI specialists on complex cases.',
                     ctaLabel: 'Open Co-Consult',

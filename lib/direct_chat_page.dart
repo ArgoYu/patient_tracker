@@ -166,7 +166,7 @@ class _DirectChatPageState extends State<DirectChatPage> {
 
   void _startCoConsultSession() {
     if (!_isDoctorConversation) {
-      _showActionSnack('AI Co-Consult is only available in consult conversations.');
+      _showActionSnack('Echo AI is only available in consult conversations.');
       return;
     }
     final session = _coConsultCoordinator.startSession(
@@ -175,7 +175,7 @@ class _DirectChatPageState extends State<DirectChatPage> {
       contactName: widget.contact.name,
     );
     if (session == null) {
-      _showActionSnack('AI Co-Consult permission is not enabled.');
+      _showActionSnack('Echo AI permission is not enabled.');
       return;
     }
     for (final message in _messages) {
@@ -191,7 +191,7 @@ class _DirectChatPageState extends State<DirectChatPage> {
       _aiCoConsultEnabled = true;
       _lastOutcome = null;
     });
-    _showActionSnack('AI Co-Consult is now enabled, and AI is listening in.');
+    _showActionSnack('Echo AI is now enabled, and AI is listening in.');
   }
 
   Future<void> _endCoConsultSession({bool showSheet = true}) async {
@@ -203,7 +203,7 @@ class _DirectChatPageState extends State<DirectChatPage> {
     try {
       outcome = _coConsultCoordinator.completeSession();
     } catch (error) {
-      _showActionSnack('There was a problem ending the AI Co-Consult session.');
+      _showActionSnack('There was a problem ending the Echo AI session.');
     } finally {
       setState(() {
         _aiCoConsultEnabled = false;
@@ -217,7 +217,7 @@ class _DirectChatPageState extends State<DirectChatPage> {
     if (showSheet) {
       await _showOutcomeSheet(outcome);
     }
-    _showActionSnack('AI Co-Consult summary is ready.');
+    _showActionSnack('Echo AI summary is ready.');
   }
 
   Future<void> _showOutcomeSheet(AiCoConsultOutcome outcome) {
@@ -600,8 +600,8 @@ class _DirectChatPageState extends State<DirectChatPage> {
                         ),
                         label: Text(
                           _aiCoConsultEnabled
-                              ? 'AI Co-Consult Enabled'
-                              : 'AI Co-Consult',
+                              ? 'Echo AI Enabled'
+                              : 'Echo AI',
                         ),
                       ),
               ),
@@ -862,7 +862,7 @@ class _CoConsultLiveBanner extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'AI Co-Consult is listening in',
+                  'Echo AI is listening in',
                   style: theme.textTheme.bodyMedium
                       ?.copyWith(fontWeight: FontWeight.w600),
                 ),
@@ -921,7 +921,7 @@ class _CoConsultOutcomePreview extends StatelessWidget {
                     color: theme.colorScheme.primary),
                 const SizedBox(width: 8),
                 Text(
-                  'AI Co-Consult summary ready',
+                  'Echo AI summary ready',
                   style: theme.textTheme.titleSmall
                       ?.copyWith(fontWeight: FontWeight.w600),
                 ),
@@ -1033,7 +1033,7 @@ class _CoConsultSummarySheet extends StatelessWidget {
                 ),
               ),
               Text(
-                'AI Co-Consult Summary',
+                'Echo AI Summary',
                 style: theme.textTheme.titleMedium
                     ?.copyWith(fontWeight: FontWeight.w600),
               ),

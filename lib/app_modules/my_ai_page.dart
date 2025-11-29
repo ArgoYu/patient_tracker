@@ -212,8 +212,8 @@ class _MyAiPageState extends State<MyAiPage> {
     final title =
         allowed ? 'Confirm clinician access' : 'Revoke clinician access';
     final description = allowed
-        ? 'Allow the clinician to initiate AI Co-Consult listening for the current session.'
-        : 'Revoking access prevents new AI Co-Consult sessions until permissions are restored.';
+        ? 'Allow the clinician to initiate Echo AI listening for the current session.'
+        : 'Revoking access prevents new Echo AI sessions until permissions are restored.';
     final confirmLabel = allowed ? 'Allow access' : 'Revoke access';
     return showCupertinoDialog<bool>(
       context: context,
@@ -246,8 +246,8 @@ class _MyAiPageState extends State<MyAiPage> {
     final title =
         allowed ? 'Confirm patient consent' : 'Revoking patient consent';
     final description = allowed
-        ? 'Confirm the patient understands that AI Co-Consult will capture and analyze this conversation.'
-        : 'Revoking patient consent prevents future AI Co-Consult recordings until new consent is provided.';
+        ? 'Confirm the patient understands that Echo AI will capture and analyze this conversation.'
+        : 'Revoking patient consent prevents future Echo AI recordings until new consent is provided.';
     final confirmLabel = allowed ? 'Record consent' : 'Revoke consent';
     return showCupertinoDialog<bool>(
       context: context,
@@ -711,7 +711,7 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
             pw.Header(
               level: 0,
               child: pw.Text(
-                'AI Co-Consult Summary',
+                'Echo AI Summary',
                 style: pw.TextStyle(
                   fontSize: 20,
                   fontWeight: pw.FontWeight.bold,
@@ -792,7 +792,7 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
             name: 'ai_co_consult_${outcome.sessionId}.pdf',
           ),
         ],
-        text: 'AI Co-Consult summary for ${outcome.contactName}',
+        text: 'Echo AI summary for ${outcome.contactName}',
       );
       exported = true;
       if (!mounted) return;
@@ -964,7 +964,7 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
             surfaceTintColor: Colors.transparent,
             centerTitle: false,
             title: Text(
-              'AI Co-Consult',
+              'Echo AI',
               style: AiTextStyles.title16(context),
             ),
             actions: [
@@ -1117,7 +1117,7 @@ class _CoConsultDetailHeader extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        'AI Co-Consult',
+                        'Echo AI',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.titleLarge?.copyWith(
@@ -3371,7 +3371,7 @@ class _AiCoConsultHubDetailPageState extends State<_AiCoConsultHubDetailPage> {
   @override
   Widget build(BuildContext context) {
     return _MyAiHubDetailScaffold(
-      title: 'AI Co-Consult',
+      title: 'Echo AI',
       subtitle:
           'Start or stop listening to a consult and generate real-time insights.',
       actionLabel: _isListening ? 'Stop Listening' : 'Start Listening',

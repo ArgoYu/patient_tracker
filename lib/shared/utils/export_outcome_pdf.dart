@@ -18,7 +18,7 @@ Future<void> exportOutcomePdf(BuildContext context, AiCoConsultOutcome o) async 
   ]);
 
   doc.addPage(pw.MultiPage(build: (_) => [
-    pw.Header(level: 0, child: pw.Text('AI Co-Consult Summary', style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold))),
+    pw.Header(level: 0, child: pw.Text('Echo AI Summary', style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold))),
     pw.Text('Generated: ${df.format(o.generatedAt)}'),
     pw.SizedBox(height: 10),
     section('Overview', o.summary),
