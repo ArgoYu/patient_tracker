@@ -8,6 +8,12 @@ class UserProfile {
     required this.preferredLanguage,
     this.pronouns,
     this.timeZone,
+    this.dob,
+    this.gender,
+    this.country,
+    this.raceEthnicity,
+    this.accessibilityOptions,
+    this.accessibilityNotes,
     required this.updatedAt,
   });
 
@@ -17,6 +23,12 @@ class UserProfile {
   final String preferredLanguage;
   final String? pronouns;
   final String? timeZone;
+  final String? dob;
+  final String? gender;
+  final String? country;
+  final String? raceEthnicity;
+  final List<String>? accessibilityOptions;
+  final String? accessibilityNotes;
   final DateTime updatedAt;
 
   UserProfile copyWith({
@@ -25,6 +37,12 @@ class UserProfile {
     String? preferredLanguage,
     String? pronouns,
     String? timeZone,
+    String? dob,
+    String? gender,
+    String? country,
+    String? raceEthnicity,
+    List<String>? accessibilityOptions,
+    String? accessibilityNotes,
     DateTime? updatedAt,
   }) {
     return UserProfile(
@@ -34,6 +52,12 @@ class UserProfile {
       preferredLanguage: preferredLanguage ?? this.preferredLanguage,
       pronouns: pronouns ?? this.pronouns,
       timeZone: timeZone ?? this.timeZone,
+      dob: dob ?? this.dob,
+      gender: gender ?? this.gender,
+      country: country ?? this.country,
+      raceEthnicity: raceEthnicity ?? this.raceEthnicity,
+      accessibilityOptions: accessibilityOptions ?? this.accessibilityOptions,
+      accessibilityNotes: accessibilityNotes ?? this.accessibilityNotes,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
@@ -64,6 +88,12 @@ class MockUserApi {
       preferredLanguage: existing?.preferredLanguage ?? LanguagePreferences.fallbackLanguageCode,
       pronouns: existing?.pronouns,
       timeZone: existing?.timeZone,
+      dob: existing?.dob,
+      gender: existing?.gender,
+      country: existing?.country,
+      raceEthnicity: existing?.raceEthnicity,
+      accessibilityOptions: existing?.accessibilityOptions,
+      accessibilityNotes: existing?.accessibilityNotes,
       updatedAt: DateTime.now(),
     );
   }
@@ -74,6 +104,12 @@ class MockUserApi {
     required String preferredLanguage,
     String? pronouns,
     String? timeZone,
+    String? dob,
+    String? gender,
+    String? country,
+    String? raceEthnicity,
+    List<String>? accessibilityOptions,
+    String? accessibilityNotes,
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 220));
     final existing = _profiles[userId];
@@ -83,6 +119,12 @@ class MockUserApi {
         preferredLanguage: preferredLanguage,
         pronouns: pronouns,
         timeZone: timeZone,
+        dob: dob,
+        gender: gender,
+        country: country,
+        raceEthnicity: raceEthnicity,
+        accessibilityOptions: accessibilityOptions,
+        accessibilityNotes: accessibilityNotes,
         updatedAt: DateTime.now(),
       );
     } else {
@@ -93,6 +135,12 @@ class MockUserApi {
         preferredLanguage: preferredLanguage,
         pronouns: pronouns,
         timeZone: timeZone,
+        dob: dob,
+        gender: gender,
+        country: country,
+        raceEthnicity: raceEthnicity,
+        accessibilityOptions: accessibilityOptions,
+        accessibilityNotes: accessibilityNotes,
         updatedAt: DateTime.now(),
       );
     }

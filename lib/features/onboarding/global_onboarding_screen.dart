@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -17,12 +18,30 @@ const _pronounOptions = [
   'Prefer not to say',
 ];
 
-const _timeZoneOptions = [
-  'Pacific Time (US & Canada)',
-  'Mountain Time (US & Canada)',
-  'Central Time (US & Canada)',
-  'Eastern Time (US & Canada)',
-  'UTC',
+const _genderOptions = [
+  'Male',
+  'Female',
+  'Non-binary',
+  'Prefer not to say',
+];
+
+const _raceOptions = [
+  'Asian',
+  'Black or African American',
+  'White',
+  'Hispanic or Latino',
+  'Native American or Alaska Native',
+  'Native Hawaiian or Other Pacific Islander',
+  'Multiple races',
+  'Prefer not to say',
+];
+
+const _accessibilityNeedOptions = [
+  'Larger text or high contrast',
+  'Screen reader support',
+  'Reduced animations',
+  'Captioning for audio / video',
+  'Other',
 ];
 
 class GlobalOnboardingFlowArguments {
@@ -71,20 +90,27 @@ class _GlobalOnboardingScreenState extends State<GlobalOnboardingScreen> {
       LanguagePreferences.fallbackLanguageCode;
   final TextEditingController _preferredNameController = TextEditingController();
   String? _selectedPronouns;
-  String? _selectedTimeZone;
+  DateTime? _selectedDateOfBirth;
+  String? _selectedGender;
+  String? _selectedRaceEthnicity;
+  final List<String> _selectedAccessibilityOptions = [];
+  final TextEditingController _accessibilityNotesController = TextEditingController();
   bool _isSavingProfile = false;
   String? _personalInfoError;
 
   @override
   void initState() {
     super.initState();
+    _preferredNameController.addListener(_onPreferredNameChanged);
     _loadPreferredLanguage();
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _preferredNameController.removeListener(_onPreferredNameChanged);
     _preferredNameController.dispose();
+    _accessibilityNotesController.dispose();
     super.dispose();
   }
 
@@ -92,6 +118,21 @@ class _GlobalOnboardingScreenState extends State<GlobalOnboardingScreen> {
     final code = await LanguagePreferences.loadPreferredLanguageCode();
     if (!mounted) return;
     setState(() => _preferredLanguageCode = code);
+  }
+
+  void _onPreferredNameChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  void _toggleAccessibilityOption(String option) {
+    setState(() {
+      if (_selectedAccessibilityOptions.contains(option)) {
+        _selectedAccessibilityOptions.remove(option);
+      } else {
+        _selectedAccessibilityOptions.add(option);
+      }
+    });
   }
 
   Future<void> _onLanguageChanged(String code) async {
@@ -116,7 +157,6 @@ class _GlobalOnboardingScreenState extends State<GlobalOnboardingScreen> {
       PrefsKeys.preferredLanguageCode,
       _preferredLanguageCode,
     );
-    await LanguagePreferences.savePreferredTimeZone(_selectedTimeZone);
     await MockAuthApi.instance.setGlobalOnboardingCompleted(userId: widget.userId);
     AuthService.instance.markGlobalOnboardingCompleted();
     return prefs.getString(PrefsKeys.authEmail);
@@ -149,6 +189,10 @@ class _GlobalOnboardingScreenState extends State<GlobalOnboardingScreen> {
     Navigator.of(context).pushReplacementNamed(AppRoutes.home);
   }
 
+  bool get _isPersonalInfoValid =>
+      _preferredNameController.text.trim().isNotEmpty &&
+      _selectedDateOfBirth != null;
+
   Future<void> _savePersonalInfo() async {
     final preferredName = _preferredNameController.text.trim();
     if (preferredName.isEmpty) {
@@ -157,17 +201,36 @@ class _GlobalOnboardingScreenState extends State<GlobalOnboardingScreen> {
       });
       return;
     }
+    if (_selectedDateOfBirth == null) {
+      setState(() {
+        _personalInfoError = 'Enter your date of birth to continue.';
+      });
+      return;
+    }
     setState(() {
       _isSavingProfile = true;
       _personalInfoError = null;
     });
     try {
+      final dobValue =
+          DateFormat('yyyy-MM-dd').format(_selectedDateOfBirth!);
+      final accessibilityOptions =
+          _selectedAccessibilityOptions.isNotEmpty
+              ? List<String>.from(_selectedAccessibilityOptions)
+              : null;
+      final accessibilityNotes =
+          _accessibilityNotesController.text.trim();
       await MockUserApi.instance.updateProfile(
         userId: widget.userId,
         preferredName: preferredName,
         preferredLanguage: _preferredLanguageCode,
         pronouns: _selectedPronouns,
-        timeZone: _selectedTimeZone,
+        dob: dobValue,
+        gender: _selectedGender,
+        raceEthnicity: _selectedRaceEthnicity,
+        accessibilityOptions: accessibilityOptions,
+        accessibilityNotes:
+            accessibilityNotes.isEmpty ? null : accessibilityNotes,
       );
       await AuthService.instance.refreshCurrentUserAccount();
       await _completeOnboarding(
@@ -291,15 +354,23 @@ class _GlobalOnboardingScreenState extends State<GlobalOnboardingScreen> {
                 selectedPronouns: _selectedPronouns,
                 onPronounsChanged: (value) =>
                     setState(() => _selectedPronouns = value),
-                selectedTimeZone: _selectedTimeZone,
-                onTimeZoneChanged: (value) =>
-                    setState(() => _selectedTimeZone = value),
+                selectedDateOfBirth: _selectedDateOfBirth,
+                onDateOfBirthChanged: (value) =>
+                    setState(() => _selectedDateOfBirth = value),
+                selectedGender: _selectedGender,
+                onGenderChanged: (value) => setState(() => _selectedGender = value),
+                selectedRaceEthnicity: _selectedRaceEthnicity,
+                onRaceEthnicityChanged: (value) =>
+                    setState(() => _selectedRaceEthnicity = value),
+                selectedAccessibilityOptions: _selectedAccessibilityOptions,
+                onToggleAccessibilityOption: _toggleAccessibilityOption,
+                accessibilityNotesController: _accessibilityNotesController,
                 isSaving: _isSavingProfile,
                 errorMessage: _personalInfoError,
-                onSave: _savePersonalInfo,
               ),
       ),
     );
+    final isPersonalInfoPage = _index == pages.length - 1;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -328,7 +399,24 @@ class _GlobalOnboardingScreenState extends State<GlobalOnboardingScreen> {
                       child: const Text('Previous'),
                     ),
                   const Spacer(),
-                  if (_index < pages.length - 1)
+                  if (isPersonalInfoPage)
+                    Semantics(
+                      button: true,
+                      label: 'Save and continue',
+                      child: FilledButton(
+                        onPressed: (_isSavingProfile || !_isPersonalInfoValid)
+                            ? null
+                            : _savePersonalInfo,
+                        child: _isSavingProfile
+                            ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Text('Save and continue'),
+                      ),
+                    )
+                  else
                     Semantics(
                       button: true,
                       label: 'Next onboarding step',
@@ -744,9 +832,15 @@ class _PersonalInformation extends StatelessWidget {
     required this.onLanguageChanged,
     required this.selectedPronouns,
     required this.onPronounsChanged,
-    required this.selectedTimeZone,
-    required this.onTimeZoneChanged,
-    required this.onSave,
+    required this.selectedDateOfBirth,
+    required this.onDateOfBirthChanged,
+    required this.selectedGender,
+    required this.onGenderChanged,
+    required this.selectedRaceEthnicity,
+    required this.onRaceEthnicityChanged,
+    required this.selectedAccessibilityOptions,
+    required this.onToggleAccessibilityOption,
+    required this.accessibilityNotesController,
     required this.isSaving,
     this.errorMessage,
   });
@@ -756,105 +850,208 @@ class _PersonalInformation extends StatelessWidget {
   final ValueChanged<String> onLanguageChanged;
   final String? selectedPronouns;
   final ValueChanged<String?> onPronounsChanged;
-  final String? selectedTimeZone;
-  final ValueChanged<String?> onTimeZoneChanged;
-  final VoidCallback onSave;
+  final DateTime? selectedDateOfBirth;
+  final ValueChanged<DateTime?> onDateOfBirthChanged;
+  final String? selectedGender;
+  final ValueChanged<String?> onGenderChanged;
+  final String? selectedRaceEthnicity;
+  final ValueChanged<String?> onRaceEthnicityChanged;
+  final List<String> selectedAccessibilityOptions;
+  final ValueChanged<String> onToggleAccessibilityOption;
+  final TextEditingController accessibilityNotesController;
   final bool isSaving;
   final String? errorMessage;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return _OnboardingCard(
-      title: 'Tell us a bit about you',
-      subtitle: 'This helps us personalize messages and defaults.',
-      children: [
-        TextField(
-          controller: preferredNameController,
-          textInputAction: TextInputAction.next,
-          decoration: const InputDecoration(
-            labelText: 'Preferred name',
-            prefixIcon: Icon(Icons.person_outline),
-          ),
-        ),
-        const SizedBox(height: 12),
-        DropdownButtonFormField<String>(
-          initialValue: selectedLanguage,
-          decoration: const InputDecoration(
-            labelText: 'Preferred language',
-          ),
-          isExpanded: true,
-          items: LanguagePreferences.supportedLanguages
-              .map(
-                (lang) => DropdownMenuItem(
-                  value: lang.code,
-                  child: Text(lang.label),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(top: 16, bottom: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _OnboardingCard(
+            title: 'Tell us a bit about you',
+            subtitle: 'This helps us personalize messages and defaults.',
+            children: [
+              TextField(
+                controller: preferredNameController,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Preferred name',
+                  prefixIcon: Icon(Icons.person_outline),
                 ),
-              )
-              .toList(),
-          onChanged: (value) {
-            if (value != null) {
-              onLanguageChanged(value);
-            }
-          },
-        ),
-        const SizedBox(height: 12),
-        DropdownButtonFormField<String>(
-          initialValue: selectedPronouns,
-          decoration: const InputDecoration(
-            labelText: 'Pronouns (optional)',
-            border: OutlineInputBorder(),
-          ),
-          isExpanded: true,
-          hint: const Text('Select'),
-          items: _pronounOptions
-              .map(
-                (option) => DropdownMenuItem(
-                  value: option,
-                  child: Text(option),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: selectedLanguage,
+                decoration: const InputDecoration(
+                  labelText: 'Preferred language',
                 ),
-              )
-              .toList(),
-          onChanged: onPronounsChanged,
-        ),
-        const SizedBox(height: 12),
-        DropdownButtonFormField<String>(
-          initialValue: selectedTimeZone,
-          decoration: const InputDecoration(
-            labelText: 'Time zone / region (optional)',
-            border: OutlineInputBorder(),
-          ),
-          isExpanded: true,
-          hint: const Text('Select'),
-          items: _timeZoneOptions
-              .map(
-                (option) => DropdownMenuItem(
-                  value: option,
-                  child: Text(option),
+                isExpanded: true,
+                items: LanguagePreferences.supportedLanguages
+                    .map(
+                      (lang) => DropdownMenuItem(
+                        value: lang.code,
+                        child: Text(lang.label),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    onLanguageChanged(value);
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: selectedPronouns,
+                decoration: const InputDecoration(
+                  labelText: 'Pronouns (optional)',
+                  border: OutlineInputBorder(),
                 ),
-              )
-              .toList(),
-          onChanged: onTimeZoneChanged,
-        ),
-        if (errorMessage != null) ...[
-          const SizedBox(height: 12),
-          Text(
-            errorMessage!,
-            style: TextStyle(color: colorScheme.error),
+                isExpanded: true,
+                hint: const Text('Select'),
+                items: _pronounOptions
+                    .map(
+                      (option) => DropdownMenuItem(
+                        value: option,
+                        child: Text(option),
+                      ),
+                    )
+                    .toList(),
+                onChanged: onPronounsChanged,
+              ),
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: () async {
+                  final firstDate = DateTime(1900);
+                  final lastDate = DateTime.now();
+                  final initialDate = selectedDateOfBirth ??
+                      DateTime.now().subtract(const Duration(days: 365 * 25));
+                  final safeInitial = initialDate.isAfter(lastDate)
+                      ? lastDate
+                      : initialDate;
+                  final clampedInitial = safeInitial.isBefore(firstDate)
+                      ? firstDate
+                      : safeInitial;
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: clampedInitial,
+                    firstDate: firstDate,
+                    lastDate: lastDate,
+                  );
+                  if (picked != null) {
+                    onDateOfBirthChanged(picked);
+                  }
+                },
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Date of birth',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.cake_outlined),
+                  ),
+                  isEmpty: selectedDateOfBirth == null,
+                  child: Text(
+                    selectedDateOfBirth != null
+                        ? DateFormat('yyyy-MM-dd').format(selectedDateOfBirth!)
+                        : 'Select',
+                    style: selectedDateOfBirth == null
+                        ? Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(context).hintColor,
+                                )
+                        : null,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: selectedGender,
+                decoration: const InputDecoration(
+                  labelText: 'Gender (optional)',
+                  border: OutlineInputBorder(),
+                ),
+                isExpanded: true,
+                hint: const Text('Select'),
+                items: _genderOptions
+                    .map(
+                      (option) => DropdownMenuItem(
+                        value: option,
+                        child: Text(option),
+                      ),
+                    )
+                    .toList(),
+                onChanged: onGenderChanged,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: selectedRaceEthnicity,
+                decoration: const InputDecoration(
+                  labelText: 'Race / ethnicity (optional)',
+                  border: OutlineInputBorder(),
+                ),
+                isExpanded: true,
+                hint: const Text('Select'),
+                items: _raceOptions
+                    .map(
+                      (option) => DropdownMenuItem(
+                        value: option,
+                        child: Text(option),
+                      ),
+                    )
+                    .toList(),
+                onChanged: onRaceEthnicityChanged,
+              ),
+              const SizedBox(height: 12),
+              InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: 'Accessibility needs (optional)',
+                  border: OutlineInputBorder(),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _accessibilityNeedOptions
+                        .map(
+                          (option) => FilterChip(
+                            label: Text(option),
+                            selected: selectedAccessibilityOptions.contains(option),
+                            onSelected: (_) => onToggleAccessibilityOption(option),
+                            selectedColor:
+                                colorScheme.primary.withOpacity(0.12),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: accessibilityNotesController,
+                minLines: 2,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  hintText: 'Tell us about any other accessibility needs',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (errorMessage != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  errorMessage!,
+                  style: TextStyle(color: colorScheme.error),
+                ),
+              ],
+            ],
           ),
         ],
-        const SizedBox(height: 16),
-        FilledButton(
-          onPressed: isSaving ? null : onSave,
-          child: isSaving
-              ? const SizedBox(
-                  height: 18,
-                  width: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Save and continue'),
-        ),
-      ],
+      ),
     );
   }
 }
