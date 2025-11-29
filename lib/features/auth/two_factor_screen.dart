@@ -53,6 +53,11 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
   bool get _needsPhone =>
       _selectedMethod != null && _isPhoneMethod(_selectedMethod!);
 
+  String get _trimmedCode => _codeController.text.trim();
+
+  bool get _isDemoBypass =>
+      _isDemoUser && _trimmedCode == demoVerificationCode;
+
   String get _subtitleText {
     if (_selectedMethod == null) {
       return 'We need one more proof of identity before giving you access.';
@@ -78,7 +83,8 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
 
   bool get _canVerify {
     if (_selectedMethod == null) return false;
-    if (!_codeIsValid(_codeController.text)) return false;
+    if (_isDemoBypass) return true;
+    if (!_codeIsValid(_trimmedCode)) return false;
     if (_needsPhone && !_isPhoneValid(_phoneController.text.trim())) {
       return false;
     }
@@ -181,8 +187,9 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
     final pending = _pending;
     final method = _selectedMethod;
     if (pending == null || method == null) return;
-    final code = _codeController.text.trim();
-    if (!_codeIsValid(code)) {
+    final code = _trimmedCode;
+    final isDemoBypassCode = _isDemoBypass;
+    if (!isDemoBypassCode && !_codeIsValid(code)) {
       setState(() {
         _codeError = method == TwoFactorMethod.authenticatorApp
             ? 'Enter the 6-digit code from your authenticator app.'
@@ -190,7 +197,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
       });
       return;
     }
-    if (_isPhoneMethod(method)) {
+    if (_isPhoneMethod(method) && !isDemoBypassCode) {
       final phone = _phoneController.text.trim();
       if (phone.isEmpty) {
         setState(() {
@@ -211,10 +218,8 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
       _codeError = null;
     });
     final authService = AuthService.instance;
-    final isMagicDemoCode =
-        _isDemoUser && code == demoVerificationCode;
     final bool success;
-    if (isMagicDemoCode) {
+    if (isDemoBypassCode) {
       await authService.completeTwoFactorWithoutRemoteCheck();
       success = true;
     } else {
