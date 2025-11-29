@@ -18,7 +18,7 @@ export 'mock_auth_api.dart' show TotpProvision;
 enum TwoFactorMethod {
   sms,
   phoneCall,
-  googleDuo,
+  authenticatorApp,
 }
 
 enum TwoFactorFlowType {
@@ -269,6 +269,10 @@ class AuthService {
         !requiresTwoFactorChallenge && !showGlobalOnboarding;
 
     if (requiresTwoFactorChallenge) {
+      final savedPhone = await MockAuthApi.instance.fetchTwoFactorPhone(
+        userId: userId,
+      );
+      _pendingPhoneNumber = savedPhone;
       _pendingSession = PendingTwoFactorSession(
         email: email,
         userId: userId,
@@ -278,7 +282,7 @@ class AuthService {
         availableMethods: methods,
         showOnboardingAfterSuccess: showGlobalOnboarding,
         hasCompletedGlobalOnboarding: hasCompletedOnboarding,
-        savedPhoneNumber: null,
+        savedPhoneNumber: savedPhone,
         flowType: TwoFactorFlowType.challenge,
         userAccount: account,
       );
@@ -417,6 +421,10 @@ class AuthService {
     }
   }
 
+  void setPendingTwoFactorMethod(TwoFactorMethod method) {
+    _pendingMethod = method;
+  }
+
   /// Validates the submitted code and finalizes the auth session.
   Future<bool> verifyTwoFactorCode(String code) async {
     final pending = _pendingSession;
@@ -428,7 +436,7 @@ class AuthService {
         code == demoVerificationCode;
     if (!isDevOverride) {
       final method = _pendingMethod;
-      if (method == TwoFactorMethod.googleDuo) {
+      if (method == TwoFactorMethod.authenticatorApp) {
         final totpValid = await MockAuthApi.instance.verifyTotpCode(
           userId: pending.userId,
           code: code,

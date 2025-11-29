@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/routing/app_routes.dart';
 import '../onboarding/global_onboarding_screen.dart';
@@ -16,13 +17,21 @@ class TwoFactorScreen extends StatefulWidget {
 }
 
 class _TwoFactorScreenState extends State<TwoFactorScreen> {
+  static final RegExp _sixDigitCodeRegExp = RegExp(r'^\d{6}$');
+
   TwoFactorMethod? _selectedMethod;
   final TextEditingController _codeController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final FocusNode _phoneFocusNode = FocusNode();
   bool _isRequestingCode = false;
   bool _isVerifying = false;
   bool _codeSent = false;
+  bool _hasSavedPhoneOnAccount = false;
+  bool _isEditingPhone = true;
   String? _error;
   String? _statusMessage;
+  String? _phoneError;
+  String? _codeError;
 
   PendingTwoFactorSession? get _pending =>
       AuthService.instance.pendingTwoFactorSession;
@@ -41,35 +50,119 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
     return null;
   }
 
+  bool get _needsPhone =>
+      _selectedMethod != null && _isPhoneMethod(_selectedMethod!);
+
+  String get _subtitleText {
+    if (_selectedMethod == null) {
+      return 'We need one more proof of identity before giving you access.';
+    }
+    if (_needsPhone) {
+      return 'We need one more proof of identity. We’ll send a 6-digit code to your phone number.';
+    }
+    return 'We need one more proof of identity. Use your Google Authenticator app to get a 6-digit code.';
+  }
+
+  String? get _codeHelperText {
+    switch (_selectedMethod) {
+      case TwoFactorMethod.sms:
+        return 'Code will be sent via SMS to your phone number.';
+      case TwoFactorMethod.phoneCall:
+        return 'Code will be read to you via an automated phone call.';
+      case TwoFactorMethod.authenticatorApp:
+        return 'Open your Google Authenticator (or any TOTP app) and enter the 6-digit code.';
+      default:
+        return null;
+    }
+  }
+
+  bool get _canVerify {
+    if (_selectedMethod == null) return false;
+    if (!_codeIsValid(_codeController.text)) return false;
+    if (_needsPhone && !_isPhoneValid(_phoneController.text.trim())) {
+      return false;
+    }
+    return true;
+  }
+
   @override
   void initState() {
     super.initState();
     final methods = _pending?.availableMethods;
     _selectedMethod =
         (methods != null && methods.isNotEmpty) ? methods.first : null;
-    if (_selectedMethod != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _sendCode());
+    final savedPhone = _pending?.savedPhoneNumber ??
+        AuthService.instance.pendingTwoFactorPhoneNumber ??
+        '';
+    if (savedPhone.isNotEmpty) {
+      _phoneController.text = savedPhone;
+      _hasSavedPhoneOnAccount = true;
+      _isEditingPhone = false;
+    }
+    if (_selectedMethod == TwoFactorMethod.authenticatorApp) {
+      AuthService.instance.setPendingTwoFactorMethod(
+        TwoFactorMethod.authenticatorApp,
+      );
     }
   }
 
   @override
   void dispose() {
     _codeController.dispose();
+    _phoneController.dispose();
+    _phoneFocusNode.dispose();
     super.dispose();
   }
 
+  bool _isPhoneMethod(TwoFactorMethod method) {
+    return method == TwoFactorMethod.sms ||
+        method == TwoFactorMethod.phoneCall;
+  }
+
+  bool _isPhoneValid(String value) {
+    final normalized = value.replaceAll(RegExp(r'[^+0-9]'), '');
+    final digitsOnly = normalized.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digitsOnly.length < 7 || digitsOnly.length > 15) {
+      return false;
+    }
+    return digitsOnly.isNotEmpty;
+  }
+
+  bool _codeIsValid(String value) {
+    return _sixDigitCodeRegExp.hasMatch(value.trim());
+  }
+
   Future<void> _sendCode() async {
-    if (_pending == null || _selectedMethod == null) return;
+    final method = _selectedMethod;
+    if (method == null || _pending == null || !_isPhoneMethod(method)) return;
+    final rawPhone = _phoneController.text.trim();
+    if (rawPhone.isEmpty) {
+      setState(() {
+        _phoneError = 'Enter a phone number to use this option.';
+      });
+      return;
+    }
+    if (!_isPhoneValid(rawPhone)) {
+      setState(() {
+        _phoneError = 'Enter a valid phone number to use this option.';
+      });
+      return;
+    }
     setState(() {
       _isRequestingCode = true;
       _error = null;
+      _phoneError = null;
+      _statusMessage = null;
     });
     try {
-      await AuthService.instance.requestTwoFactorCode(_selectedMethod!);
+      await AuthService.instance.requestTwoFactorCode(
+        method,
+        phoneNumber: rawPhone,
+      );
       if (!mounted) return;
       setState(() {
         _codeSent = true;
-        _statusMessage = 'Code sent via ${_methodLabel(_selectedMethod!)}.';
+        _statusMessage = 'Code sent via ${_methodLabel(method)}.';
       });
     } catch (_) {
       if (!mounted) return;
@@ -86,19 +179,37 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
 
   Future<void> _verifyCode() async {
     final pending = _pending;
-    if (pending == null) return;
+    final method = _selectedMethod;
+    if (pending == null || method == null) return;
     final code = _codeController.text.trim();
-    if (code.isEmpty) {
+    if (!_codeIsValid(code)) {
       setState(() {
-        _error = 'Enter the 6-digit code we sent to you.';
+        _codeError = method == TwoFactorMethod.authenticatorApp
+            ? 'Enter the 6-digit code from your authenticator app.'
+            : 'Enter the 6-digit code we sent to you.';
       });
       return;
+    }
+    if (_isPhoneMethod(method)) {
+      final phone = _phoneController.text.trim();
+      if (phone.isEmpty) {
+        setState(() {
+          _phoneError = 'Enter a phone number to use this option.';
+        });
+        return;
+      }
+      if (!_isPhoneValid(phone)) {
+        setState(() {
+          _phoneError = 'Enter a valid phone number to use this option.';
+        });
+        return;
+      }
     }
     setState(() {
       _isVerifying = true;
       _error = null;
+      _codeError = null;
     });
-    // 2FA is required by the backend, so only this path lets the user finish login.
     final success = await AuthService.instance.verifyTwoFactorCode(code);
     if (success) {
       if (!mounted) return;
@@ -119,24 +230,69 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
       );
       return;
     }
-    if (mounted) {
-      setState(() {
-        _error = 'The code is incorrect or expired. Please try again.';
-      });
-    }
     if (!mounted) return;
     setState(() {
+      _error = 'The code is incorrect or expired. Please try again.';
       _isVerifying = false;
     });
+  }
+
+  void _onPhoneChanged(String value) {
+    if (_phoneError != null && _isPhoneValid(value.trim())) {
+      setState(() => _phoneError = null);
+    }
+  }
+
+  void _onCodeChanged(String value) {
+    if (_codeError != null && _codeIsValid(value)) {
+      setState(() => _codeError = null);
+    }
+  }
+
+  void _startEditingPhone() {
+    if (_isEditingPhone) return;
+    setState(() {
+      _isEditingPhone = true;
+    });
+    FocusScope.of(context).requestFocus(_phoneFocusNode);
+  }
+
+  void _onMethodChanged(TwoFactorMethod? method) {
+    if (method == null) return;
+    _codeController.clear();
+    setState(() {
+      _selectedMethod = method;
+      _codeSent = false;
+      _statusMessage = null;
+      _error = null;
+      _phoneError = null;
+      _codeError = null;
+    });
+    if (method == TwoFactorMethod.authenticatorApp) {
+      AuthService.instance.setPendingTwoFactorMethod(method);
+    }
+  }
+
+  void _switchToPhoneMethod() {
+    final pending = _pending;
+    if (pending == null) return;
+    final fallback = pending.availableMethods.firstWhere(
+      _isPhoneMethod,
+      orElse: () => _selectedMethod ?? TwoFactorMethod.sms,
+    );
+    if (!_isPhoneMethod(fallback) || fallback == _selectedMethod) {
+      return;
+    }
+    _onMethodChanged(fallback);
   }
 
   String _methodLabel(TwoFactorMethod method) {
     switch (method) {
       case TwoFactorMethod.sms:
-        return 'SMS to your phone';
+        return 'Text message (SMS)';
       case TwoFactorMethod.phoneCall:
         return 'Phone call';
-      case TwoFactorMethod.googleDuo:
+      case TwoFactorMethod.authenticatorApp:
         return 'Authenticator app';
     }
   }
