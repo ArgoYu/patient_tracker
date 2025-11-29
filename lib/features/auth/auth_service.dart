@@ -425,6 +425,42 @@ class AuthService {
     _pendingMethod = method;
   }
 
+  Future<void> _finalizePendingTwoFactorSession(
+    PendingTwoFactorSession pending,
+  ) async {
+    if (pending.flowType == TwoFactorFlowType.challenge) {
+      final account = pending.userAccount;
+      final session = AuthSession(
+        userId: pending.userId,
+        token: pending.token,
+        refreshToken: pending.refreshToken,
+        rememberMe: pending.rememberMe,
+        hasCompletedGlobalOnboarding: pending.hasCompletedGlobalOnboarding,
+        userAccount: account,
+      );
+      _currentSession = session;
+      _updateCurrentAccount(account);
+      if (session.rememberMe) {
+        await _persistSession(session);
+      }
+    } else {
+      await MockAuthApi.instance.markTwoFactorEnabled(userId: pending.userId);
+    }
+    _pendingSession = null;
+    _pendingCode = null;
+    _pendingMethod = null;
+    _pendingTotpProvision = null;
+    _pendingPhoneNumber = null;
+  }
+
+  Future<void> completeTwoFactorWithoutRemoteCheck() async {
+    final pending = _pendingSession;
+    if (pending == null) {
+      throw const AuthException('No pending verification available.');
+    }
+    await _finalizePendingTwoFactorSession(pending);
+  }
+
   /// Validates the submitted code and finalizes the auth session.
   Future<bool> verifyTwoFactorCode(String code) async {
     final pending = _pendingSession;
@@ -452,29 +488,7 @@ class AuthService {
       }
     }
 
-      if (pending.flowType == TwoFactorFlowType.challenge) {
-        final account = pending.userAccount;
-        final session = AuthSession(
-          userId: pending.userId,
-          token: pending.token,
-          refreshToken: pending.refreshToken,
-          rememberMe: pending.rememberMe,
-          hasCompletedGlobalOnboarding: pending.hasCompletedGlobalOnboarding,
-          userAccount: account,
-        );
-        _currentSession = session;
-        _updateCurrentAccount(account);
-        if (session.rememberMe) {
-          await _persistSession(session);
-        }
-      } else {
-        await MockAuthApi.instance.markTwoFactorEnabled(userId: pending.userId);
-      }
-    _pendingSession = null;
-    _pendingCode = null;
-    _pendingMethod = null;
-    _pendingTotpProvision = null;
-    _pendingPhoneNumber = null;
+    await _finalizePendingTwoFactorSession(pending);
     return true;
   }
 

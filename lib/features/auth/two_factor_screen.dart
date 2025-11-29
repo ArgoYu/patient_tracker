@@ -210,7 +210,16 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
       _error = null;
       _codeError = null;
     });
-    final success = await AuthService.instance.verifyTwoFactorCode(code);
+    final authService = AuthService.instance;
+    final isMagicDemoCode =
+        _isDemoUser && code == demoVerificationCode;
+    final bool success;
+    if (isMagicDemoCode) {
+      await authService.completeTwoFactorWithoutRemoteCheck();
+      success = true;
+    } else {
+      success = await authService.verifyTwoFactorCode(code);
+    }
     if (success) {
       if (!mounted) return;
       if (pending.showOnboardingAfterSuccess) {
@@ -329,20 +338,20 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                'We need one more proof of identity before giving you access.',
+                _subtitleText,
                 style: theme.textTheme.bodyMedium
                     ?.copyWith(color: colorScheme.onSurface.withOpacity(0.7)),
               ),
-              const SizedBox(height: 24),
               if (codeHint != null) ...[
+                const SizedBox(height: 12),
                 Text(
                   codeHint,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: colorScheme.primary,
                   ),
                 ),
-                const SizedBox(height: 12),
               ],
+              const SizedBox(height: 24),
               Text(
                 'Choose how to receive your 6-digit code:',
                 style: theme.textTheme.bodyMedium,
@@ -351,11 +360,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
               DropdownButton<TwoFactorMethod>(
                 value: _selectedMethod,
                 isExpanded: true,
-                onChanged: _isRequestingCode ? null : (value) {
-                  setState(() {
-                    _selectedMethod = value;
-                  });
-                },
+                onChanged: _isRequestingCode ? null : _onMethodChanged,
                 items: pending.availableMethods
                     .map(
                       (method) => DropdownMenuItem(
@@ -365,43 +370,89 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
                     )
                     .toList(),
               ),
+              if (_needsPhone) ...[
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _phoneController,
+                  focusNode: _phoneFocusNode,
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(
+                      RegExp(r'[0-9+\-\s\(\)]'),
+                    ),
+                  ],
+                  readOnly: _hasSavedPhoneOnAccount && !_isEditingPhone,
+                  onTap: _hasSavedPhoneOnAccount && !_isEditingPhone
+                      ? _startEditingPhone
+                      : null,
+                  decoration: InputDecoration(
+                    labelText: 'Phone number',
+                    hintText: 'Enter your mobile number',
+                    helperText:
+                        'Required for Text message (SMS) and Phone call methods.',
+                    prefixIcon: const Icon(Icons.phone),
+                    errorText: _phoneError,
+                    suffix: _hasSavedPhoneOnAccount && !_isEditingPhone
+                        ? TextButton(
+                            onPressed: _startEditingPhone,
+                            child: const Text('Change'),
+                          )
+                        : null,
+                  ),
+                  onChanged: _onPhoneChanged,
+                ),
+              ],
               const SizedBox(height: 16),
-              TextField(
+              TextFormField(
                 controller: _codeController,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Verification code',
-                  prefixIcon: Icon(Icons.lock_outline),
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  helperText: _codeHelperText,
+                  errorText: _codeError,
                 ),
+                onChanged: _onCodeChanged,
               ),
               const SizedBox(height: 12),
               if (_error != null)
                 Text(
                   _error!,
-                  style:
-                      theme.textTheme.bodyMedium?.copyWith(color: colorScheme.error),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.error,
+                  ),
                 ),
               if (_statusMessage != null)
                 Text(
                   _statusMessage!,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: colorScheme.onSurface.withOpacity(0.7)),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurface.withOpacity(0.7),
+                  ),
                 ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: _isRequestingCode ? null : _sendCode,
-                      icon: const Icon(Icons.send),
-                      label: Text(_codeSent ? 'Resend code' : 'Send code'),
+              if (_needsPhone)
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _isRequestingCode ? null : _sendCode,
+                        icon: const Icon(Icons.send),
+                        label: Text(_codeSent ? 'Resend code' : 'Send code'),
+                      ),
                     ),
+                  ],
+                )
+              else
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: _isRequestingCode ? null : _switchToPhoneMethod,
+                    child: const Text('Use a different method'),
                   ),
-                ],
-              ),
+                ),
               const SizedBox(height: 12),
               FilledButton(
-                onPressed: _isVerifying ? null : _verifyCode,
+                onPressed: (!_isVerifying && _canVerify) ? _verifyCode : null,
                 child: _isVerifying
                     ? const SizedBox(
                         height: 18,

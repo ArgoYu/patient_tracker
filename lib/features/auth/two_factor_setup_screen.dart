@@ -180,7 +180,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
     if (!mounted) return;
     setState(() {
       _codeSent = true;
-      _statusMessage = method == TwoFactorMethod.googleDuo
+      _statusMessage = method == TwoFactorMethod.authenticatorApp
           ? 'Authenticator app setup ready. Scan the QR code or enter the secret manually.'
           : 'Code sent via ${_methodLabel(method)}.';
     });
@@ -192,7 +192,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
     final code = _codeController.text.trim();
     if (code.isEmpty) {
       setState(() {
-        _error = _selectedMethod == TwoFactorMethod.googleDuo
+        _error = _selectedMethod == TwoFactorMethod.authenticatorApp
             ? 'Enter the 6-digit code from your app.'
             : 'Enter the 6-digit code we sent to you.';
       });
@@ -224,7 +224,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
         return 'SMS to your phone';
       case TwoFactorMethod.phoneCall:
         return 'Phone call';
-      case TwoFactorMethod.googleDuo:
+      case TwoFactorMethod.authenticatorApp:
         return 'Authenticator app';
     }
   }
@@ -258,7 +258,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
     if (!mounted) return;
     if (_selectedMethod == null) return;
     final method = _selectedMethod!;
-    if (method == TwoFactorMethod.googleDuo) {
+    if (method == TwoFactorMethod.authenticatorApp) {
       _sendCode();
       return;
     }
@@ -451,7 +451,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
                           )
                           .toList(),
                     ),
-                    if (_selectedMethod == TwoFactorMethod.googleDuo) ...[
+                    if (_selectedMethod == TwoFactorMethod.authenticatorApp) ...[
                       const SizedBox(height: 16),
                       _buildAuthenticatorSetupPanel(theme, colorScheme, totpProvision),
                     ],
@@ -460,7 +460,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
                       controller: _codeController,
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
-                        labelText: _selectedMethod == TwoFactorMethod.googleDuo
+                        labelText: _selectedMethod == TwoFactorMethod.authenticatorApp
                             ? 'Enter 6-digit code from your app'
                             : 'Verification code',
                         prefixIcon: const Icon(Icons.lock_outline),
