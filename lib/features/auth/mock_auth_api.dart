@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'package:otp/otp.dart';
+
 import '../user/mock_user_api.dart';
 import 'demo_credentials.dart';
 import 'user_identity.dart';
@@ -8,6 +10,16 @@ import 'user_identity.dart';
 ///
 /// This simulates backend calls so the UI can enforce verification without
 /// depending on a real server.
+class TotpProvision {
+  const TotpProvision({
+    required this.secret,
+    required this.provisioningUri,
+  });
+
+  final String secret;
+  final String provisioningUri;
+}
+
 class MockAuthApi {
   MockAuthApi._();
 
@@ -17,6 +29,8 @@ class MockAuthApi {
   final Random _random = Random();
   final Map<String, bool> _onboardingCompleted = {};
   final Map<String, bool> _twoFactorEnabled = {};
+  final Map<String, String> _twoFactorPhones = {};
+  final Map<String, String> _totpSecrets = {};
 
   Future<String> sendEmailCode(String email) async {
     await Future<void>.delayed(const Duration(milliseconds: 450));
@@ -48,7 +62,6 @@ class MockAuthApi {
   Future<void> register({
     required String email,
     required String password,
-    required String legalName,
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 400));
     // In a real implementation we would persist the user and return tokens.
@@ -58,8 +71,67 @@ class MockAuthApi {
     _twoFactorEnabled[userId] = false;
     await MockUserApi.instance.registerProfile(
       userId: userId,
-      legalName: legalName,
     );
+  }
+
+  Future<String?> fetchTwoFactorPhone({
+    required String userId,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    return _twoFactorPhones[userId];
+  }
+
+  Future<void> updateTwoFactorPhone({
+    required String userId,
+    required String phoneNumber,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 140));
+    _twoFactorPhones[userId] = phoneNumber;
+  }
+
+  Future<TotpProvision> generateTotpSetup({
+    required String userId,
+    required String email,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    final secret = _generateBase32Secret();
+    _totpSecrets[userId] = secret;
+    final provisioningUri = _buildOtpProvisioningUri(secret: secret, email: email);
+    return TotpProvision(
+      secret: secret,
+      provisioningUri: provisioningUri,
+    );
+  }
+
+  Future<bool> verifyTotpCode({
+    required String userId,
+    required String code,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    final secret = _totpSecrets[userId];
+    if (secret == null) return false;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final validCodes = [
+      OTP.generateTOTPCodeString(
+        secret,
+        now - 30000,
+        algorithm: Algorithm.SHA1,
+        length: 6,
+      ),
+      OTP.generateTOTPCodeString(
+        secret,
+        now,
+        algorithm: Algorithm.SHA1,
+        length: 6,
+      ),
+      OTP.generateTOTPCodeString(
+        secret,
+        now + 30000,
+        algorithm: Algorithm.SHA1,
+        length: 6,
+      ),
+    ];
+    return validCodes.contains(code);
   }
 
   Future<bool> hasCompletedGlobalOnboarding({
@@ -95,6 +167,21 @@ class MockAuthApi {
   }
 
   String _userIdForEmail(String email) => UserIdentity.idForEmail(email);
+
+  String _generateBase32Secret([int length = 20]) {
+    const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    return List.generate(length, (_) => charset[_random.nextInt(charset.length)])
+        .join();
+  }
+
+  String _buildOtpProvisioningUri({
+    required String secret,
+    required String email,
+  }) {
+    final label = Uri.encodeComponent('Patient Tracker:$email');
+    final issuer = Uri.encodeComponent('Patient Tracker');
+    return 'otpauth://totp/$label?secret=$secret&issuer=$issuer&digits=6&period=30&algorithm=SHA1';
+  }
 }
 
 class _CodeState {

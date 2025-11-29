@@ -1,9 +1,15 @@
 import '../../shared/language_preferences.dart';
 
+String? _normalizeName(String? value) {
+  final trimmed = value?.trim();
+  if (trimmed == null || trimmed.isEmpty) return null;
+  return trimmed;
+}
+
 class UserProfile {
   const UserProfile({
     required this.userId,
-    required this.legalName,
+    this.legalName,
     this.preferredName,
     required this.preferredLanguage,
     this.pronouns,
@@ -18,7 +24,7 @@ class UserProfile {
   });
 
   final String userId;
-  final String legalName;
+  final String? legalName;
   final String? preferredName;
   final String preferredLanguage;
   final String? pronouns;
@@ -77,13 +83,14 @@ class MockUserApi {
 
   Future<void> registerProfile({
     required String userId,
-    required String legalName,
+    String? legalName,
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 160));
     final existing = _profiles[userId];
+    final normalizedLegalName = _normalizeName(legalName);
     _profiles[userId] = UserProfile(
       userId: userId,
-      legalName: legalName.trim(),
+      legalName: normalizedLegalName,
       preferredName: existing?.preferredName,
       preferredLanguage: existing?.preferredLanguage ?? LanguagePreferences.fallbackLanguageCode,
       pronouns: existing?.pronouns,
@@ -100,6 +107,7 @@ class MockUserApi {
 
   Future<void> updateProfile({
     required String userId,
+    required String legalName,
     required String preferredName,
     required String preferredLanguage,
     String? pronouns,
@@ -112,9 +120,11 @@ class MockUserApi {
     String? accessibilityNotes,
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 220));
+    final normalizedLegalName = _normalizeName(legalName);
     final existing = _profiles[userId];
     if (existing != null) {
       _profiles[userId] = existing.copyWith(
+        legalName: normalizedLegalName,
         preferredName: preferredName.trim(),
         preferredLanguage: preferredLanguage,
         pronouns: pronouns,
@@ -130,7 +140,7 @@ class MockUserApi {
     } else {
       _profiles[userId] = UserProfile(
         userId: userId,
-        legalName: preferredName.trim(),
+        legalName: normalizedLegalName ?? preferredName.trim(),
         preferredName: preferredName.trim(),
         preferredLanguage: preferredLanguage,
         pronouns: pronouns,

@@ -89,6 +89,7 @@ class _GlobalOnboardingScreenState extends State<GlobalOnboardingScreen> {
   String _preferredLanguageCode =
       LanguagePreferences.fallbackLanguageCode;
   final TextEditingController _preferredNameController = TextEditingController();
+  final TextEditingController _legalNameController = TextEditingController();
   String? _selectedPronouns;
   DateTime? _selectedDateOfBirth;
   String? _selectedGender;
@@ -101,7 +102,9 @@ class _GlobalOnboardingScreenState extends State<GlobalOnboardingScreen> {
   @override
   void initState() {
     super.initState();
+    _loadAccountInfo();
     _preferredNameController.addListener(_onPreferredNameChanged);
+    _legalNameController.addListener(_onLegalNameChanged);
     _loadPreferredLanguage();
   }
 
@@ -110,6 +113,8 @@ class _GlobalOnboardingScreenState extends State<GlobalOnboardingScreen> {
     _controller.dispose();
     _preferredNameController.removeListener(_onPreferredNameChanged);
     _preferredNameController.dispose();
+    _legalNameController.removeListener(_onLegalNameChanged);
+    _legalNameController.dispose();
     _accessibilityNotesController.dispose();
     super.dispose();
   }
@@ -120,7 +125,22 @@ class _GlobalOnboardingScreenState extends State<GlobalOnboardingScreen> {
     setState(() => _preferredLanguageCode = code);
   }
 
+  void _loadAccountInfo() {
+    final account = AuthService.instance.currentUserAccount;
+    final legalName = account?.legalName?.trim();
+    _legalNameController.text = legalName ?? '';
+    final preferredName = account?.preferredName?.trim();
+    if (preferredName != null && preferredName.isNotEmpty) {
+      _preferredNameController.text = preferredName;
+    }
+  }
+
   void _onPreferredNameChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  void _onLegalNameChanged() {
     if (!mounted) return;
     setState(() {});
   }
@@ -190,10 +210,18 @@ class _GlobalOnboardingScreenState extends State<GlobalOnboardingScreen> {
   }
 
   bool get _isPersonalInfoValid =>
+      _legalNameController.text.trim().isNotEmpty &&
       _preferredNameController.text.trim().isNotEmpty &&
       _selectedDateOfBirth != null;
 
   Future<void> _savePersonalInfo() async {
+    final legalName = _legalNameController.text.trim();
+    if (legalName.isEmpty) {
+      setState(() {
+        _personalInfoError = 'Enter your legal name to continue.';
+      });
+      return;
+    }
     final preferredName = _preferredNameController.text.trim();
     if (preferredName.isEmpty) {
       setState(() {
@@ -222,6 +250,7 @@ class _GlobalOnboardingScreenState extends State<GlobalOnboardingScreen> {
           _accessibilityNotesController.text.trim();
       await MockUserApi.instance.updateProfile(
         userId: widget.userId,
+        legalName: legalName,
         preferredName: preferredName,
         preferredLanguage: _preferredLanguageCode,
         pronouns: _selectedPronouns,
@@ -345,10 +374,11 @@ class _GlobalOnboardingScreenState extends State<GlobalOnboardingScreen> {
         index: finalIndex,
         currentIndex: _index,
         reduceMotion: _reduceMotion,
-        child: widget.replay
-            ? _Ready(onFinish: _completeOnboarding)
-            : _PersonalInformation(
-                preferredNameController: _preferredNameController,
+            child: widget.replay
+                ? _Ready(onFinish: _completeOnboarding)
+                : _PersonalInformation(
+                    legalNameController: _legalNameController,
+                    preferredNameController: _preferredNameController,
                 selectedLanguage: _preferredLanguageCode,
                 onLanguageChanged: _onLanguageChanged,
                 selectedPronouns: _selectedPronouns,
@@ -827,6 +857,7 @@ class _Ready extends StatelessWidget {
 
 class _PersonalInformation extends StatelessWidget {
   const _PersonalInformation({
+    required this.legalNameController,
     required this.preferredNameController,
     required this.selectedLanguage,
     required this.onLanguageChanged,
@@ -845,6 +876,7 @@ class _PersonalInformation extends StatelessWidget {
     this.errorMessage,
   });
 
+  final TextEditingController legalNameController;
   final TextEditingController preferredNameController;
   final String selectedLanguage;
   final ValueChanged<String> onLanguageChanged;
@@ -874,6 +906,15 @@ class _PersonalInformation extends StatelessWidget {
             title: 'Tell us a bit about you',
             subtitle: 'This helps us personalize messages and defaults.',
             children: [
+              TextFormField(
+                controller: legalNameController,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Legal name',
+                  prefixIcon: Icon(Icons.badge_outlined),
+                ),
+              ),
+              const SizedBox(height: 12),
               TextField(
                 controller: preferredNameController,
                 textInputAction: TextInputAction.next,

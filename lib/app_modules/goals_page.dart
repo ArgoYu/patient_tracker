@@ -310,6 +310,9 @@ class _GoalsPageState extends State<GoalsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final totalGoals = widget.goals.length;
+    final hasDietPlanData =
+        widget.mealMenu.values.any((options) => options.isNotEmpty);
+    final shouldShowDietSection = totalGoals > 0 && hasDietPlanData;
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Goals'),
@@ -412,18 +415,20 @@ class _GoalsPageState extends State<GoalsPage> {
             ],
             ..._buildGoalsList(context),
           ],
-          const SizedBox(height: 24),
-          _DietPlanSection(
-            menu: widget.mealMenu,
-            selections: widget.mealSelections,
-            deliveryWindows: widget.mealDeliveryWindows,
-            completed: widget.completedMeals,
-            notes: widget.mealNotes,
-            onSelectMeal: widget.onSelectMealOption,
-            onChangeWindow: widget.onChangeMealTime,
-            onToggleCompleted: widget.onToggleMealCompleted,
-            onNotesChanged: widget.onUpdateMealNotes,
-          ),
+          if (shouldShowDietSection) ...[
+            const SizedBox(height: 24),
+            _DietPlanSection(
+              menu: widget.mealMenu,
+              selections: widget.mealSelections,
+              deliveryWindows: widget.mealDeliveryWindows,
+              completed: widget.completedMeals,
+              notes: widget.mealNotes,
+              onSelectMeal: widget.onSelectMealOption,
+              onChangeWindow: widget.onChangeMealTime,
+              onToggleCompleted: widget.onToggleMealCompleted,
+              onNotesChanged: widget.onUpdateMealNotes,
+            ),
+          ],
         ],
       ),
     );

@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/routing/app_routes.dart';
@@ -26,12 +28,14 @@ class TwoFactorSetupScreen extends StatefulWidget {
 class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
   TwoFactorMethod? _selectedMethod;
   final TextEditingController _codeController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   bool _isPreparing = true;
   bool _isRequestingCode = false;
   bool _isVerifying = false;
   bool _codeSent = false;
   String? _error;
   String? _statusMessage;
+  String? _phoneError;
   String? _emailForSetup;
 
   PendingTwoFactorSession? get _pending =>
@@ -46,6 +50,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
   @override
   void dispose() {
     _codeController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -66,12 +71,21 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
         email: email,
       );
       final methods = AuthService.instance.pendingTwoFactorSession?.availableMethods;
+      final savedPhone = AuthService.instance.pendingTwoFactorPhoneNumber;
+      if (savedPhone != null) {
+        _phoneController.text = savedPhone;
+      }
       if (methods != null && methods.isNotEmpty) {
+        final defaultMethod = methods.firstWhere(
+          (method) => !_requiresPhone(method),
+          orElse: () => methods.first,
+        );
+        if (!mounted) return;
         setState(() {
-          _selectedMethod = methods.first;
+          _selectedMethod = defaultMethod;
           _isPreparing = false;
         });
-        await _sendCode();
+        _maybeAutoSendCode();
       } else {
         if (!mounted) return;
         setState(() => _isPreparing = false);
@@ -86,17 +100,68 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
   }
 
   Future<void> _sendCode() async {
-    if (_pending == null || _selectedMethod == null) return;
+    if (_pending == null) return;
+    final method = _selectedMethod;
+
+    if (method == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please choose a verification method.')),
+      );
+      return;
+    }
+
+    final requiresPhone = _requiresPhone(method);
+    String? phoneNumber;
+
+    if (requiresPhone) {
+      final raw = _phoneController.text.trim();
+      if (raw.isEmpty) {
+        setState(() {
+          _phoneError = 'Enter a phone number to use this option.';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter your phone number.')),
+        );
+        return;
+      }
+      if (!_isPhoneValid(raw)) {
+        setState(() {
+          _phoneError = 'Enter a valid phone number to use this option.';
+        });
+        return;
+      }
+      phoneNumber = raw;
+    } else {
+      phoneNumber = null;
+    }
+
     setState(() {
       _isRequestingCode = true;
       _error = null;
+      _phoneError = null;
+      _statusMessage = null;
     });
+
     try {
-      await AuthService.instance.requestTwoFactorCode(_selectedMethod!);
+      // DEBUG: make sure we really pass the number down
+      // (You can remove these prints later.)
+      debugPrint(
+        '[_sendCode] method=$method, phoneNumber="$phoneNumber" (requiresPhone=$requiresPhone)',
+      );
+      await AuthService.instance.requestTwoFactorCode(
+        method,
+        phoneNumber: phoneNumber,
+      );
+      _goToCodeEntryStep(method);
+    } on AuthException catch (e) {
       if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message ?? 'Failed to start verification.'),
+        ),
+      );
       setState(() {
-        _codeSent = true;
-        _statusMessage = 'Code sent via ${_methodLabel(_selectedMethod!)}.';
+        _error = e.message ?? 'Unable to send a code right now. Try again shortly.';
       });
     } catch (_) {
       if (!mounted) return;
@@ -111,13 +176,25 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
     }
   }
 
+  void _goToCodeEntryStep(TwoFactorMethod method) {
+    if (!mounted) return;
+    setState(() {
+      _codeSent = true;
+      _statusMessage = method == TwoFactorMethod.googleDuo
+          ? 'Authenticator app setup ready. Scan the QR code or enter the secret manually.'
+          : 'Code sent via ${_methodLabel(method)}.';
+    });
+  }
+
   Future<void> _verifyCode() async {
     final pending = _pending;
     if (pending == null) return;
     final code = _codeController.text.trim();
     if (code.isEmpty) {
       setState(() {
-        _error = 'Enter the 6-digit code we sent to you.';
+        _error = _selectedMethod == TwoFactorMethod.googleDuo
+            ? 'Enter the 6-digit code from your app.'
+            : 'Enter the 6-digit code we sent to you.';
       });
       return;
     }
@@ -152,11 +229,122 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
     }
   }
 
+  bool get _hasValidPhone => _isPhoneValid(_phoneController.text);
+
+  bool _requiresPhone(TwoFactorMethod method) =>
+      method == TwoFactorMethod.sms || method == TwoFactorMethod.phoneCall;
+
+  bool get _hasPhoneMethodAvailable =>
+      _pending?.availableMethods.any(_requiresPhone) ?? false;
+
+  void _onPhoneChanged(String value) {
+    setState(() {
+      if (_phoneError != null && _isPhoneValid(value)) {
+        _phoneError = null;
+      }
+    });
+  }
+
+  bool _isPhoneValid(String value) {
+    final normalized = value.replaceAll(RegExp(r'[^+0-9]'), '');
+    final digitsOnly = normalized.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digitsOnly.length < 7 || digitsOnly.length > 15) {
+      return false;
+    }
+    return digitsOnly.isNotEmpty;
+  }
+
+  void _maybeAutoSendCode() {
+    if (!mounted) return;
+    if (_selectedMethod == null) return;
+    final method = _selectedMethod!;
+    if (method == TwoFactorMethod.googleDuo) {
+      _sendCode();
+      return;
+    }
+    if (_hasValidPhone) {
+      _sendCode();
+    }
+  }
+
+  Widget _buildAuthenticatorSetupPanel(
+    ThemeData theme,
+    ColorScheme colorScheme,
+    TotpProvision? provision,
+  ) {
+    final textTheme = theme.textTheme;
+    final manualSecret = provision?.secret ?? '';
+    final formattedSecret = _formatSecret(manualSecret);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Download an authenticator app (we recommend Google Authenticator) on your phone.',
+          style: textTheme.bodyMedium?.copyWith(
+            color: colorScheme.onSurface.withOpacity(0.8),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Scan this QR code or enter the code manually.',
+          style: textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurface.withOpacity(0.7),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Center(
+          child: provision == null
+              ? const SizedBox(
+                  height: 160,
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              : QrImageView(
+                  data: provision.provisioningUri,
+                  version: QrVersions.auto,
+                  size: 180,
+                  gapless: true,
+                ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Manual secret key',
+          style: textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 4),
+        provision != null
+            ? SelectableText(
+                formattedSecret,
+                style: textTheme.bodyMedium?.copyWith(letterSpacing: 1),
+              )
+            : Text(
+                'Secret will appear here once the QR is ready.',
+                style: textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurface.withOpacity(0.7),
+                ),
+              ),
+      ],
+    );
+  }
+
+  String _formatSecret(String secret) {
+    final cleaned = secret.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').toUpperCase();
+    if (cleaned.isEmpty) return '';
+    final buffer = StringBuffer();
+    for (var i = 0; i < cleaned.length; i++) {
+      if (i > 0 && i % 4 == 0) {
+        buffer.write(' ');
+      }
+      buffer.write(cleaned[i]);
+    }
+    return buffer.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     final pending = _pending;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final totpProvision = AuthService.instance.pendingTwoFactorTotpProvision;
     return Scaffold(
       appBar: AppBar(title: const Text('Set up Two-Factor Authentication')),
       body: SafeArea(
@@ -203,6 +391,25 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
                       ),
                     ],
                     const SizedBox(height: 24),
+                    if (_hasPhoneMethodAvailable) ...[
+                      TextFormField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        textInputAction: TextInputAction.next,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[0-9+\-\s\(\)]')),
+                        ],
+                        decoration: InputDecoration(
+                          labelText: 'Phone number',
+                          hintText: 'Enter your mobile number',
+                          helperText: 'Required for SMS and phone call methods.',
+                          prefixIcon: const Icon(Icons.phone),
+                          errorText: _phoneError,
+                        ),
+                        onChanged: _onPhoneChanged,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     Text(
                       'Choose how to receive your code:',
                       style: theme.textTheme.bodyMedium,
@@ -211,27 +418,52 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
                     DropdownButton<TwoFactorMethod>(
                       value: _selectedMethod,
                       isExpanded: true,
-                      onChanged: _isRequestingCode ? null : (value) {
-                        setState(() {
-                          _selectedMethod = value;
-                        });
-                      },
+                      onChanged: _isRequestingCode
+                          ? null
+                          : (value) {
+                              if (value == null) return;
+                              if (_requiresPhone(value) && !_hasValidPhone) {
+                                setState(() {
+                                  _phoneError =
+                                      'Enter a valid phone number to use this option.';
+                                });
+                                return;
+                              }
+                              setState(() {
+                                _codeSent = false;
+                                _selectedMethod = value;
+                                _phoneError = null;
+                                _statusMessage = null;
+                              });
+                              _codeController.clear();
+                              _maybeAutoSendCode();
+                            },
                       items: pending.availableMethods
                           .map(
-                            (method) => DropdownMenuItem(
-                              value: method,
-                              child: Text(_methodLabel(method)),
-                            ),
+                            (method) {
+                              final enabled = !_requiresPhone(method) || _hasValidPhone;
+                              return DropdownMenuItem(
+                                value: method,
+                                enabled: enabled,
+                                child: Text(_methodLabel(method)),
+                              );
+                            },
                           )
                           .toList(),
                     ),
+                    if (_selectedMethod == TwoFactorMethod.googleDuo) ...[
+                      const SizedBox(height: 16),
+                      _buildAuthenticatorSetupPanel(theme, colorScheme, totpProvision),
+                    ],
                     const SizedBox(height: 16),
                     TextField(
                       controller: _codeController,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Verification code',
-                        prefixIcon: Icon(Icons.lock_outline),
+                      decoration: InputDecoration(
+                        labelText: _selectedMethod == TwoFactorMethod.googleDuo
+                            ? 'Enter 6-digit code from your app'
+                            : 'Verification code',
+                        prefixIcon: const Icon(Icons.lock_outline),
                       ),
                     ),
                     const SizedBox(height: 12),

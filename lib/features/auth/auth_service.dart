@@ -13,6 +13,8 @@ import 'mock_auth_api.dart';
 import 'user_account.dart' hide isDemoAccount;
 import 'user_identity.dart';
 
+export 'mock_auth_api.dart' show TotpProvision;
+
 enum TwoFactorMethod {
   sms,
   phoneCall,
@@ -35,6 +37,7 @@ class PendingTwoFactorSession {
     required this.availableMethods,
     required this.showOnboardingAfterSuccess,
     required this.hasCompletedGlobalOnboarding,
+    this.savedPhoneNumber,
     required this.flowType,
     required this.userAccount,
   });
@@ -47,6 +50,7 @@ class PendingTwoFactorSession {
   final List<TwoFactorMethod> availableMethods;
   final bool showOnboardingAfterSuccess;
   final bool hasCompletedGlobalOnboarding;
+  final String? savedPhoneNumber;
   final TwoFactorFlowType flowType;
   final UserAccount userAccount;
 }
@@ -199,6 +203,9 @@ class AuthService {
 
   PendingTwoFactorSession? _pendingSession;
   String? _pendingCode;
+  String? _pendingPhoneNumber;
+  TwoFactorMethod? _pendingMethod;
+  TotpProvision? _pendingTotpProvision;
   AuthSession? _currentSession;
   bool _currentUserIsDemo = false;
   final ValueNotifier<UserAccount?> _accountNotifier = ValueNotifier(null);
@@ -216,6 +223,10 @@ class AuthService {
   bool get isAuthenticated => _currentSession != null;
 
   PendingTwoFactorSession? get pendingTwoFactorSession => _pendingSession;
+
+  String? get pendingTwoFactorPhoneNumber => _pendingPhoneNumber;
+  TotpProvision? get pendingTwoFactorTotpProvision => _pendingTotpProvision;
+  TwoFactorMethod? get pendingTwoFactorMethod => _pendingMethod;
 
   String? get currentUserId => _currentSession?.userId;
   ValueListenable<UserAccount?> get currentUserAccountListenable =>
@@ -267,6 +278,7 @@ class AuthService {
         availableMethods: methods,
         showOnboardingAfterSuccess: showGlobalOnboarding,
         hasCompletedGlobalOnboarding: hasCompletedOnboarding,
+        savedPhoneNumber: null,
         flowType: TwoFactorFlowType.challenge,
         userAccount: account,
       );
@@ -319,6 +331,10 @@ class AuthService {
           userId: userId,
           email: email,
         );
+    final savedPhone = await MockAuthApi.instance.fetchTwoFactorPhone(userId: userId);
+    _pendingPhoneNumber = savedPhone;
+    _pendingMethod = null;
+    _pendingTotpProvision = null;
     _pendingSession = PendingTwoFactorSession(
       email: email,
       userId: userId,
@@ -329,6 +345,7 @@ class AuthService {
       showOnboardingAfterSuccess: false,
       hasCompletedGlobalOnboarding:
           currentSession?.hasCompletedGlobalOnboarding ?? false,
+      savedPhoneNumber: savedPhone,
       flowType: TwoFactorFlowType.enrollment,
       userAccount: fallbackAccount,
     );
@@ -336,19 +353,66 @@ class AuthService {
   }
 
   /// Generates or resends a 2FA code via the selected [method].
-  Future<void> requestTwoFactorCode(TwoFactorMethod method) async {
+  Future<void> requestTwoFactorCode(
+    TwoFactorMethod method, {
+    String? phoneNumber,
+  }) async {
     final pending = _pendingSession;
     if (pending == null) {
       throw const AuthException('No pending verification available.');
     }
+    final requiresPhone = method == TwoFactorMethod.sms ||
+        method == TwoFactorMethod.phoneCall;
     await Future<void>.delayed(const Duration(milliseconds: 360));
+    if (requiresPhone) {
+      final candidate = (phoneNumber ?? _pendingPhoneNumber ?? '').trim();
+      final normalizedPhone = _normalizePhoneNumber(candidate);
+
+      if (normalizedPhone.isEmpty) {
+        // Do not crash the app if some caller forgot to provide a phone number.
+        // UI-level validation (in the 2FA setup screen) already enforces this
+        // for enrollment flows. For other flows (e.g. resend), we just skip
+        // requesting a new code when there is no phone available.
+        debugPrint(
+          'AuthService.requestTwoFactorCode: empty phone for $method; '
+          'skipping phone update / code request.',
+        );
+        return;
+      }
+
+      await MockAuthApi.instance.updateTwoFactorPhone(
+        userId: pending.userId,
+        phoneNumber: normalizedPhone,
+      );
+      _pendingPhoneNumber = normalizedPhone;
+      _pendingTotpProvision = null;
+    } else {
+      if (pending.flowType == TwoFactorFlowType.enrollment) {
+        _pendingTotpProvision = await MockAuthApi.instance.generateTotpSetup(
+          userId: pending.userId,
+          email: pending.email,
+        );
+      } else {
+        _pendingTotpProvision = null;
+      }
+    }
+    _pendingMethod = method;
     final useFixedCode = kDebugMode || _currentUserIsDemo;
-    _pendingCode = useFixedCode ? demoVerificationCode : _generateCode();
-    if (kDebugMode) {
+    if (requiresPhone) {
+      _pendingCode = useFixedCode ? demoVerificationCode : _generateCode();
+    } else {
+      _pendingCode = null;
+    }
+    if (requiresPhone && kDebugMode) {
       final sourceLabel =
           _currentUserIsDemo ? '(demo fixed code)' : '(dev fixed code)';
       debugPrint(
         '2FA code for ${pending.email} via $method: $_pendingCode $sourceLabel',
+      );
+    }
+    if (!requiresPhone && _pendingTotpProvision != null && kDebugMode) {
+      debugPrint(
+        'Authenticator secret for ${pending.email}: ${_pendingTotpProvision!.secret}',
       );
     }
   }
@@ -360,9 +424,24 @@ class AuthService {
       throw const AuthException('No pending verification available.');
     }
     await Future<void>.delayed(const Duration(milliseconds: 360));
-    final expectedCode = _currentUserIsDemo ? demoVerificationCode : _pendingCode;
-    if (expectedCode == null || code != expectedCode) {
-      return false;
+    final isDevOverride = (kDebugMode || _currentUserIsDemo) &&
+        code == demoVerificationCode;
+    if (!isDevOverride) {
+      final method = _pendingMethod;
+      if (method == TwoFactorMethod.googleDuo) {
+        final totpValid = await MockAuthApi.instance.verifyTotpCode(
+          userId: pending.userId,
+          code: code,
+        );
+        if (!totpValid) {
+          return false;
+        }
+      } else {
+        final expectedCode = _pendingCode;
+        if (expectedCode == null || code != expectedCode) {
+          return false;
+        }
+      }
     }
 
       if (pending.flowType == TwoFactorFlowType.challenge) {
@@ -385,6 +464,9 @@ class AuthService {
       }
     _pendingSession = null;
     _pendingCode = null;
+    _pendingMethod = null;
+    _pendingTotpProvision = null;
+    _pendingPhoneNumber = null;
     return true;
   }
 
@@ -542,4 +624,8 @@ class AuthService {
 
   String _generateCode() =>
       List.generate(6, (_) => _random.nextInt(10)).join();
+
+  String _normalizePhoneNumber(String value) {
+    return value.replaceAll(RegExp(r'[^+0-9]'), '');
+  }
 }

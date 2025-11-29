@@ -1220,11 +1220,11 @@ class AccountData {
         safetyPlan: SafetyPlanData(),
         notifications: [],
         copingPlans: [],
-        mealMenu: kDefaultMealMenu,
-        mealSelections: _defaultMealSelections(),
-        mealDeliveryWindows: _defaultMealWindows(),
+        mealMenu: const <MealSlot, List<MealOption>>{},
+        mealSelections: const <MealSlot, int>{},
+        mealDeliveryWindows: const <MealSlot, TimeOfDay>{},
         completedMeals: _defaultCompletedMeals(),
-        mealNotes: kDefaultMealNotes,
+        mealNotes: '',
       );
 }
 

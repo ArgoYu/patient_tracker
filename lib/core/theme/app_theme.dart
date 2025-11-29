@@ -52,6 +52,7 @@ const List<Palette> palettes = <Palette>[
 ];
 
 /// Centralised theme configuration for both light and dark modes.
+
 class AppTheme {
   const AppTheme._();
 
@@ -65,7 +66,7 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: Colors.transparent,
-      splashFactory: InkSparkle.splashFactory,
+      splashFactory: InkRipple.splashFactory,
       textTheme: ThemeData(brightness: brightness).textTheme.apply(
             bodyColor: scheme.onSurface,
             displayColor: scheme.onSurface,
