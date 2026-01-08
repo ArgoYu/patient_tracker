@@ -2,10 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-const _kAnimationDuration = Duration(milliseconds: 1100);
-const _kBadgeSize = 140.0;
-const _kCheckSize = 72.0;
-const _kBadgeColor = Color(0xFF34A853);
+import 'success_animation_shared.dart';
 
 /// Show this animation after storing the authenticated session and pass a [nextRoute]
 /// for automatic continuation, or omit it to pop with `true`.
@@ -14,7 +11,7 @@ class TwoFactorSuccessScreen extends StatelessWidget {
     super.key,
     this.nextRoute,
     this.nextRouteArguments,
-    this.duration = _kAnimationDuration,
+    this.duration = successAnimationDuration,
   });
 
   final String? nextRoute;
@@ -30,7 +27,7 @@ class TwoFactorSuccessScreen extends StatelessWidget {
         child: Center(
           child: _TwoFactorSuccessAnimation(
             duration: duration,
-            badgeColor: _kBadgeColor,
+            badgeColor: successBadgeColor,
             nextRoute: nextRoute,
             nextRouteArguments: nextRouteArguments,
           ),
@@ -137,8 +134,8 @@ class _TwoFactorSuccessAnimationState extends State<_TwoFactorSuccessAnimation>
                 child: Transform.scale(
                   scale: _circleScale.value,
                   child: Container(
-                    width: _kBadgeSize,
-                    height: _kBadgeSize,
+                    width: successBadgeSize,
+                    height: successBadgeSize,
                     decoration: BoxDecoration(
                       color: widget.badgeColor,
                       shape: BoxShape.circle,
@@ -152,8 +149,8 @@ class _TwoFactorSuccessAnimationState extends State<_TwoFactorSuccessAnimation>
                     ),
                     child: Center(
                       child: CustomPaint(
-                        size: const Size(_kCheckSize, _kCheckSize),
-                        painter: _CheckMarkPainter(
+                        size: const Size(successCheckSize, successCheckSize),
+                        painter: SuccessCheckPainter(
                           progress: _checkProgress.value,
                           color: colorScheme.onPrimary,
                         ),
@@ -181,49 +178,5 @@ class _TwoFactorSuccessAnimationState extends State<_TwoFactorSuccessAnimation>
         ],
       ),
     );
-  }
-}
-
-class _CheckMarkPainter extends CustomPainter {
-  _CheckMarkPainter({
-    required this.progress,
-    required this.color,
-  });
-
-  final double progress;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (progress <= 0) {
-      return;
-    }
-
-    final path = Path()
-      ..moveTo(size.width * 0.2, size.height * 0.55)
-      ..lineTo(size.width * 0.45, size.height * 0.75)
-      ..lineTo(size.width * 0.82, size.height * 0.3);
-
-    final metrics = path.computeMetrics().toList();
-    if (metrics.isEmpty) return;
-    final metric = metrics.first;
-    final extractPath = metric.extractPath(
-      0,
-      metric.length * progress,
-    );
-
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * 0.12
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    canvas.drawPath(extractPath, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _CheckMarkPainter oldDelegate) {
-    return progress != oldDelegate.progress || color != oldDelegate.color;
   }
 }

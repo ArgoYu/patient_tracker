@@ -2,11 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../core/routing/app_routes.dart';
 import '../onboarding/global_onboarding_screen.dart';
 import 'auth_service.dart';
 import 'demo_credentials.dart';
-import 'two_factor_success_screen.dart';
+import 'welcome_back_screen.dart';
 
 class TwoFactorScreen extends StatefulWidget {
   const TwoFactorScreen({super.key});
@@ -226,21 +225,25 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
     }
     if (success) {
       if (!mounted) return;
-      final nextRoute = pending.showOnboardingAfterSuccess
-          ? AppRoutes.globalOnboarding
-          : AppRoutes.home;
-      final nextArguments = pending.showOnboardingAfterSuccess
-          ? GlobalOnboardingFlowArguments(
+      if (pending.showOnboardingAfterSuccess) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => GlobalOnboardingScreen(
               userId: pending.userId,
               isNewlyRegistered: pending.showOnboardingAfterSuccess,
-            )
-          : null;
+            ),
+          ),
+        );
+        return;
+      }
+      final account = pending.userAccount;
+      final fallbackName =
+          account.preferredName ?? account.legalName ?? account.displayName;
+      final displayName =
+          fallbackName.isNotEmpty ? fallbackName : pending.email;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => TwoFactorSuccessScreen(
-            nextRoute: nextRoute,
-            nextRouteArguments: nextArguments,
-          ),
+          builder: (_) => WelcomeBackScreen(displayName: displayName),
         ),
       );
       return;

@@ -11,6 +11,7 @@ import 'demo_credentials.dart';
 import 'mock_auth_api.dart';
 import 'auth_service.dart';
 import 'two_factor_setup_screen.dart';
+import 'welcome_back_screen.dart';
 
 class AuthGatePage extends StatefulWidget {
   const AuthGatePage({super.key});
@@ -275,9 +276,17 @@ class _AuthGatePageState extends State<AuthGatePage> {
     }
 
     if (!mounted) return;
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      AppRoutes.home,
-      (route) => false,
+    final account = AuthService.instance.currentUserAccount;
+    final displayName = account?.preferredName ??
+        account?.legalName ??
+        account?.displayName ??
+        email;
+    // Used after login for returning users; first-time users go to onboarding flow.
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => WelcomeBackScreen(displayName: displayName),
+      ),
     );
   }
 
