@@ -758,7 +758,7 @@ class _LanguageDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
       key: ValueKey('$label-$value'),
-      initialValue: value,
+      value: value,
       items: [
         for (final option in options)
           DropdownMenuItem(

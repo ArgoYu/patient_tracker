@@ -6,6 +6,7 @@ import '../../core/routing/app_routes.dart';
 import '../onboarding/global_onboarding_screen.dart';
 import 'auth_service.dart';
 import 'demo_credentials.dart';
+import 'two_factor_success_screen.dart';
 
 class TwoFactorScreen extends StatefulWidget {
   const TwoFactorScreen({super.key});
@@ -55,8 +56,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
 
   String get _trimmedCode => _codeController.text.trim();
 
-  bool get _isDemoBypass =>
-      _isDemoUser && _trimmedCode == demoVerificationCode;
+  bool get _isDemoBypass => _isDemoUser && _trimmedCode == demoVerificationCode;
 
   String get _subtitleText {
     if (_selectedMethod == null) {
@@ -121,8 +121,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
   }
 
   bool _isPhoneMethod(TwoFactorMethod method) {
-    return method == TwoFactorMethod.sms ||
-        method == TwoFactorMethod.phoneCall;
+    return method == TwoFactorMethod.sms || method == TwoFactorMethod.phoneCall;
   }
 
   bool _isPhoneValid(String value) {
@@ -227,20 +226,22 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
     }
     if (success) {
       if (!mounted) return;
-      if (pending.showOnboardingAfterSuccess) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => GlobalOnboardingScreen(
+      final nextRoute = pending.showOnboardingAfterSuccess
+          ? AppRoutes.globalOnboarding
+          : AppRoutes.home;
+      final nextArguments = pending.showOnboardingAfterSuccess
+          ? GlobalOnboardingFlowArguments(
               userId: pending.userId,
               isNewlyRegistered: pending.showOnboardingAfterSuccess,
-            ),
+            )
+          : null;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => TwoFactorSuccessScreen(
+            nextRoute: nextRoute,
+            nextRouteArguments: nextArguments,
           ),
-        );
-        return;
-      }
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRoutes.home,
-        (route) => false,
+        ),
       );
       return;
     }

@@ -526,7 +526,7 @@ class _GoalsPageState extends State<GoalsPage> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<GoalCategory>(
-                  initialValue: category,
+                  value: category,
                   decoration: const InputDecoration(labelText: 'Category'),
                   onChanged: (value) {
                     if (value != null) {
@@ -631,7 +631,7 @@ class _GoalsPageState extends State<GoalsPage> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<GoalFrequency>(
-                  initialValue: frequency,
+                  value: frequency,
                   onChanged: (value) {
                     if (value != null) {
                       setState(() => frequency = value);
@@ -2330,7 +2330,7 @@ class _GoalFormDialogState extends State<_GoalFormDialog> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<GoalCategory>(
-              initialValue: category,
+              value: category,
               decoration: const InputDecoration(labelText: 'Category'),
               onChanged: (value) {
                 if (value != null) {
@@ -2422,7 +2422,7 @@ class _GoalFormDialogState extends State<_GoalFormDialog> {
               const SizedBox(height: 12),
             ],
             DropdownButtonFormField<GoalImportance>(
-              initialValue: importance,
+              value: importance,
               decoration: const InputDecoration(labelText: 'Importance'),
               onChanged: (value) {
                 if (value != null) {
@@ -2457,7 +2457,7 @@ class _GoalFormDialogState extends State<_GoalFormDialog> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<GoalFrequency>(
-              initialValue: freq,
+              value: freq,
               onChanged: (v) {
                 if (v != null) {
                   setState(() => freq = v);
