@@ -28,6 +28,9 @@ class DashboardCard extends StatelessWidget {
         isPrimary ? scheme.heroCardColor(baseSurface) : baseSurface;
     final iconColor = scheme.primary;
     final borderColor = scheme.cardBorderColor.withValues(alpha: 0.45);
+    final horizontalPadding =
+        AppThemeTokens.cardPadding + (isPrimary ? 4 : 0);
+    final verticalPadding = AppThemeTokens.cardPadding - 6 + (isPrimary ? 2 : 0);
 
     return Material(
       color: cardColor,
@@ -40,8 +43,9 @@ class DashboardCard extends StatelessWidget {
         splashFactory: InkRipple.splashFactory,
         child: Container(
           width: double.infinity,
-          padding: EdgeInsets.all(
-            AppThemeTokens.cardPadding + (isPrimary ? 4 : 0),
+          padding: EdgeInsets.symmetric(
+            horizontal: horizontalPadding,
+            vertical: verticalPadding,
           ),
           decoration: BoxDecoration(
             color: cardColor,
@@ -52,8 +56,8 @@ class DashboardCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: scheme.iconContainerFillColor,
                   borderRadius:
@@ -64,12 +68,13 @@ class DashboardCard extends StatelessWidget {
                 ),
                 child: Icon(icon, color: iconColor, size: 26),
               ),
-              SizedBox(height: AppThemeTokens.gap),
+              const SizedBox(height: 8),
               Text(
                 title,
                 style: theme.textTheme.titleMedium?.copyWith(
                       fontSize: isPrimary ? 18 : 16,
                       fontWeight: FontWeight.w600,
+                      height: 1.12,
                       color: scheme.onSurface,
                     ),
               ),
@@ -77,10 +82,11 @@ class DashboardCard extends StatelessWidget {
               Text(
                 status,
                 style: theme.textTheme.bodySmall?.copyWith(
-                      color: scheme.secondaryTextColor,
+                      color: scheme.onSurfaceVariant,
+                      height: 1.18,
                     ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               Align(
                 alignment: Alignment.bottomRight,
                 child: Icon(

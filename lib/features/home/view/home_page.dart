@@ -454,9 +454,9 @@ class _HomePanelsGrid extends StatelessWidget {
       itemCount: panels.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        mainAxisSpacing: AppThemeTokens.gap,
+        mainAxisSpacing: AppThemeTokens.gap - 4,
         crossAxisSpacing: AppThemeTokens.gap,
-        childAspectRatio: 1,
+        childAspectRatio: 1.15,
       ),
       itemBuilder: (context, index) => buildPanel(panels[index]),
     );
