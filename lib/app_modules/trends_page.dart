@@ -1,6 +1,15 @@
 part of 'package:patient_tracker/app_modules.dart';
 
-class TrendsPage extends StatelessWidget {
+enum SignalTone { good, neutral, caution }
+
+class SignalStatus {
+  const SignalStatus(this.label, this.tone);
+
+  final String label;
+  final SignalTone tone;
+}
+
+class TrendsPage extends StatefulWidget {
   const TrendsPage(
       {super.key,
       required this.history,
@@ -11,9 +20,16 @@ class TrendsPage extends StatelessWidget {
   final List<VitalEntry> vitals;
   final List<LabResult> labs;
 
-  List<FeelingEntry> get _recent => history.length <= 7
-      ? List<FeelingEntry>.from(history)
-      : history.sublist(history.length - 7);
+  @override
+  State<TrendsPage> createState() => _TrendsPageState();
+}
+
+class _TrendsPageState extends State<TrendsPage> {
+  bool _showAllVitals = false;
+
+  List<FeelingEntry> get _recent => widget.history.length <= 7
+      ? List<FeelingEntry>.from(widget.history)
+      : widget.history.sublist(widget.history.length - 7);
 
   double? _avg(List<FeelingEntry> entries) {
     if (entries.isEmpty) return null;
@@ -24,9 +40,53 @@ class TrendsPage extends StatelessWidget {
   String _avgLabel(double? value) =>
       value == null ? '--' : value.toStringAsFixed(1);
 
+  SignalStatus _moodSignalStatus(List<FeelingEntry> entries) {
+    if (entries.isEmpty) {
+      return const SignalStatus('Needs data', SignalTone.caution);
+    }
+    final latest = entries
+        .map((e) => e.date)
+        .reduce((a, b) => a.isAfter(b) ? a : b);
+    final cutoff = DateTime.now().subtract(const Duration(days: 7));
+    if (latest.isBefore(cutoff)) {
+      return const SignalStatus('Limited data', SignalTone.neutral);
+    }
+    return const SignalStatus('Tracking', SignalTone.good);
+  }
+
+  SignalStatus _vitalsSignalStatus(List<VitalEntry> vitalsSorted) {
+    if (vitalsSorted.length < 2) {
+      return const SignalStatus('Needs data', SignalTone.caution);
+    }
+    final current = vitalsSorted[0];
+    final previous = vitalsSorted[1];
+    const systolicThreshold = 6;
+    const heartRateThreshold = 6;
+    final systolicDiff = (current.systolic - previous.systolic).abs();
+    final hrDiff = (current.heartRate - previous.heartRate).abs();
+    if (systolicDiff <= systolicThreshold && hrDiff <= heartRateThreshold) {
+      return const SignalStatus('Stable', SignalTone.good);
+    }
+    return const SignalStatus('Changing', SignalTone.neutral);
+  }
+
+  SignalStatus _labsSignalStatus(List<LabResult> labsSorted) {
+    if (labsSorted.isEmpty) {
+      return const SignalStatus('Needs data', SignalTone.caution);
+    }
+    return const SignalStatus('Up to date', SignalTone.good);
+  }
+
+  SignalStatus _timelineSignalStatus(List<FeelingEntry> entries) {
+    if (entries.isEmpty) {
+      return const SignalStatus('No events', SignalTone.neutral);
+    }
+    return const SignalStatus('Updated', SignalTone.good);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final entries = List<FeelingEntry>.from(history);
+    final entries = List<FeelingEntry>.from(widget.history);
     final recent = _recent;
     final recentAvg = _avg(recent);
     final overallAvg = _avg(entries);
@@ -41,67 +101,60 @@ class TrendsPage extends StatelessWidget {
                 ? 'Mood trending up over last 7 entries.'
                 : 'Mood trending down recently.';
 
-    final latest = entries.isNotEmpty ? entries.last : null;
-    final vitalsSorted = List<VitalEntry>.from(vitals)
+    final latest = entries.isNotEmpty
+        ? entries.reduce((a, b) => a.date.isAfter(b.date) ? a : b)
+        : null;
+    final vitalsSorted = List<VitalEntry>.from(widget.vitals)
       ..sort((a, b) => b.date.compareTo(a.date));
-    final labsSorted = List<LabResult>.from(labs)
+    final labsSorted = List<LabResult>.from(widget.labs)
       ..sort((a, b) => b.collectedOn.compareTo(a.collectedOn));
-    final hasAnyData =
-        entries.isNotEmpty || vitalsSorted.isNotEmpty || labsSorted.isNotEmpty;
-    final appBar = AppBar(
-      title: const Text('Trends'),
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-    );
 
-    if (!hasAnyData) {
-      return Scaffold(
-        appBar: appBar,
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.show_chart,
-                    size: 48, color: Theme.of(context).colorScheme.primary),
-                const SizedBox(height: 16),
-                Text(
-                  'Let’s start tracking your mood and vitals',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w600),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Log a feeling, take your vitals, or record a lab result and this page will show your trend insights.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(color: Colors.black54),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
+    final moodStatus = _moodSignalStatus(entries);
+    final vitalsStatus = _vitalsSignalStatus(vitalsSorted);
+    final labsStatus = _labsSignalStatus(labsSorted);
+    final timelineStatus = _timelineSignalStatus(entries);
 
     return Scaffold(
-      appBar: appBar,
+      appBar: AppBar(
+        title: const Text('Trends'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Glass(
+          SignalsSummaryCard(
+            title: "Today's Signals",
+            items: [
+              SignalTile(
+                icon: Icons.mood_outlined,
+                label: 'Mood',
+                status: moodStatus,
+              ),
+              SignalTile(
+                icon: Icons.monitor_heart_outlined,
+                label: 'Vitals',
+                status: vitalsStatus,
+              ),
+              SignalTile(
+                icon: Icons.science_outlined,
+                label: 'Labs',
+                status: labsStatus,
+              ),
+              SignalTile(
+                icon: Icons.event_note_outlined,
+                label: 'Timeline',
+                status: timelineStatus,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TrendSectionCard(
+            title: 'Mood',
+            trailing: SignalChip(status: moodStatus),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Mood summary',
-                    style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
                 Wrap(
                   spacing: 12,
                   runSpacing: 12,
@@ -127,39 +180,73 @@ class TrendsPage extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(deltaText),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Glass(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Mood trend (last entries)',
-                    style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 180,
-                  child: _MoodTrendChart(entries: entries),
+                Text(
+                  deltaText,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.75)),
+                ),
+                const SizedBox(height: 14),
+                _Subpanel(
+                  child: entries.isEmpty
+                      ? const _EmptyState(
+                          icon: Icons.mood_outlined,
+                          title: 'No mood entries yet',
+                          message:
+                              'Log feelings from Notifications to see trends.',
+                        )
+                      : SizedBox(
+                          height: 190,
+                          child: _MoodTrendChart(entries: entries),
+                        ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 12),
-          Glass(
+          TrendSectionCard(
+            title: 'Vitals',
+            trailing: SignalChip(status: vitalsStatus),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Vitals (Blood Pressure & Heart Rate)',
-                    style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                if (vitalsSorted.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Text('No vital records yet.'),
-                  )
-                else ...[
+                _Subpanel(
+                  child: vitalsSorted.isEmpty
+                      ? const _EmptyState(
+                          icon: Icons.monitor_heart_outlined,
+                          title: 'No vital readings yet',
+                          message:
+                              'Capture blood pressure and heart rate to see patterns.',
+                        )
+                      : SizedBox(
+                          height: 190,
+                          child: _VitalsBarChart(vitals: vitalsSorted),
+                        ),
+                ),
+                if (vitalsSorted.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Text(
+                        'Recent readings',
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                      const Spacer(),
+                      if (vitalsSorted.length > 3)
+                        TextButton(
+                          onPressed: () {
+                            setState(() => _showAllVitals = !_showAllVitals);
+                          },
+                          child: Text(_showAllVitals ? 'Show less' : 'View all'),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: DataTable(
@@ -171,7 +258,9 @@ class TrendsPage extends StatelessWidget {
                         DataColumn(label: Text('Trend')),
                       ],
                       rows: List<DataRow>.generate(
-                        vitalsSorted.length,
+                        _showAllVitals
+                            ? vitalsSorted.length
+                            : math.min(3, vitalsSorted.length),
                         (i) {
                           final current = vitalsSorted[i];
                           final previous = i + 1 < vitalsSorted.length
@@ -181,7 +270,7 @@ class TrendsPage extends StatelessWidget {
                               ? null
                               : current.systolic - previous.systolic;
                           final diffText = diff == null
-                              ? '—'
+                              ? '--'
                               : diff == 0
                                   ? '0'
                                   : diff > 0
@@ -190,9 +279,15 @@ class TrendsPage extends StatelessWidget {
                           final diffColor = diff == null
                               ? Theme.of(context).textTheme.bodyMedium?.color
                               : diff > 0
-                                  ? Colors.redAccent
+                                  ? Theme.of(context)
+                                      .colorScheme
+                                      .error
+                                      .withValues(alpha: 0.85)
                                   : diff < 0
-                                      ? Colors.green
+                                      ? Theme.of(context)
+                                          .colorScheme
+                                          .tertiary
+                                          .withValues(alpha: 0.85)
                                       : Theme.of(context)
                                           .textTheme
                                           .bodyMedium
@@ -211,90 +306,376 @@ class TrendsPage extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    height: 160,
-                    child: _VitalsBarChart(vitals: vitalsSorted),
-                  ),
                 ],
               ],
             ),
           ),
           const SizedBox(height: 12),
-          Glass(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Lab Results',
-                    style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                if (labsSorted.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Text('No lab results captured yet.'),
+          TrendSectionCard(
+            title: 'Labs',
+            trailing: SignalChip(status: labsStatus),
+            child: labsSorted.isEmpty
+                ? const _EmptyState(
+                    icon: Icons.science_outlined,
+                    title: 'No lab results yet',
+                    message: 'Add lab records to keep this signal up to date.',
                   )
-                else
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      columns: const [
-                        DataColumn(label: Text('Collected')),
-                        DataColumn(label: Text('Test')),
-                        DataColumn(label: Text('Result')),
-                        DataColumn(label: Text('Notes')),
-                      ],
-                      rows: labsSorted
-                          .map(
-                            (lab) => DataRow(
-                              cells: [
-                                DataCell(Text(formatDate(lab.collectedOn))),
-                                DataCell(Text(lab.name)),
-                                DataCell(Text(lab.valueWithUnit())),
-                                DataCell(Text(lab.notes?.isNotEmpty == true
-                                    ? lab.notes!
-                                    : '—')),
-                              ],
-                            ),
-                          )
-                          .toList(),
-                    ),
+                : Column(
+                    children: [
+                      for (int i = 0; i < labsSorted.length; i++)
+                        _LabRow(
+                          lab: labsSorted[i],
+                          isLast: i == labsSorted.length - 1,
+                        ),
+                    ],
                   ),
-              ],
-            ),
           ),
           const SizedBox(height: 12),
-          Glass(
+          TrendSectionCard(
+            title: 'Timeline',
+            trailing: SignalChip(status: timelineStatus),
+            child: entries.isEmpty
+                ? const _EmptyState(
+                    icon: Icons.event_note_outlined,
+                    title: 'No timeline events',
+                    message: 'Log a feeling to see updates here.',
+                  )
+                : Column(
+                    children: entries.reversed
+                        .map(
+                          (e) => Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Row(
+                              children: [
+                                Text('Score ${e.score}/5'),
+                                const SizedBox(width: 12),
+                                Expanded(child: Text(formatDateTime(e.date))),
+                              ],
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class SignalsSummaryCard extends StatelessWidget {
+  const SignalsSummaryCard({
+    super.key,
+    required this.title,
+    required this.items,
+  });
+
+  final String title;
+  final List<Widget> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return TrendSectionCard(
+      title: title,
+      prominent: true,
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: items,
+      ),
+    );
+  }
+}
+
+class SignalTile extends StatelessWidget {
+  const SignalTile({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.status,
+  });
+
+  final IconData icon;
+  final String label;
+  final SignalStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final accent = _signalAccentColor(colors, status.tone);
+    final text = Theme.of(context).textTheme;
+
+    return Container(
+      width: 168,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: colors.surface.withValues(alpha: 0.08),
+        border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            height: 34,
+            width: 34,
+            decoration: BoxDecoration(
+              color: colors.primary.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: accent, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Timeline',
-                    style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                if (entries.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Text(
-                        'No mood entries yet. Log feelings from Notifications.'),
-                  )
-                else
-                  ...entries.reversed.map(
-                    (e) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Row(
-                        children: [
-                          Text('Score ${e.score}/5'),
-                          const SizedBox(width: 12),
-                          Expanded(child: Text(formatDateTime(e.date))),
-                        ],
-                      ),
-                    ),
+                Text(label, style: text.labelLarge),
+                const SizedBox(height: 2),
+                Text(
+                  status.label,
+                  style: text.bodySmall?.copyWith(
+                    color: colors.onSurface.withValues(alpha: 0.75),
+                    fontWeight: FontWeight.w600,
                   ),
+                ),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+}
+
+class SignalChip extends StatelessWidget {
+  const SignalChip({super.key, required this.status});
+
+  final SignalStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final accent = _signalAccentColor(colors, status.tone);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: colors.primary.withValues(
+            alpha: Theme.of(context).brightness == Brightness.dark ? 0.18 : 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.auto_graph_outlined, size: 14, color: accent),
+          const SizedBox(width: 6),
+          Text(
+            status.label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: colors.onSurface.withValues(alpha: 0.85),
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class TrendSectionCard extends StatelessWidget {
+  const TrendSectionCard({
+    super.key,
+    required this.title,
+    required this.child,
+    this.trailing,
+    this.prominent = false,
+  });
+
+  final String title;
+  final Widget child;
+  final Widget? trailing;
+  final bool prominent;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final surfaceOpacity = prominent ? 0.12 : 0.08;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        color: colors.surface.withValues(alpha: surfaceOpacity),
+        border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+              if (trailing != null) trailing!,
+            ],
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _Subpanel extends StatelessWidget {
+  const _Subpanel({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        color: colors.surface.withValues(alpha: 0.06),
+        border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.25)),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Container(
+            height: 44,
+            width: 44,
+            decoration: BoxDecoration(
+              color: colors.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: colors.primary, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  message,
+                  style: text.bodySmall?.copyWith(
+                    color: colors.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LabRow extends StatelessWidget {
+  const _LabRow({required this.lab, required this.isLast});
+
+  final LabResult lab;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final isNormal = lab.value.trim().toLowerCase() == 'normal';
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: isLast
+                ? Colors.transparent
+                : colors.outlineVariant.withValues(alpha: 0.2),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  lab.name,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  formatDate(lab.collectedOn),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colors.onSurface.withValues(alpha: 0.7),
+                      ),
+                ),
+              ],
+            ),
+          ),
+          Row(
+            children: [
+              Text(
+                lab.valueWithUnit(),
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              if (isNormal) ...[
+                const SizedBox(width: 6),
+                Icon(
+                  Icons.check_circle_outline,
+                  size: 16,
+                  color: colors.tertiary.withValues(alpha: 0.8),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Color _signalAccentColor(ColorScheme colors, SignalTone tone) {
+  switch (tone) {
+    case SignalTone.good:
+      return colors.primary.withValues(alpha: 0.9);
+    case SignalTone.caution:
+      return colors.tertiary.withValues(alpha: 0.9);
+    case SignalTone.neutral:
+      return colors.onSurface.withValues(alpha: 0.8);
   }
 }
 
@@ -309,13 +690,14 @@ class _TrendStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final colors = Theme.of(context).colorScheme;
     return Container(
-      width: 160,
-      padding: const EdgeInsets.all(12),
+      width: 156,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.08),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        borderRadius: BorderRadius.circular(16),
+        color: colors.surface.withValues(alpha: 0.08),
+        border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -325,7 +707,11 @@ class _TrendStat extends StatelessWidget {
           Text(value,
               style: text.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
-          Text(footer, style: text.labelSmall),
+          Text(
+            footer,
+            style: text.labelSmall
+                ?.copyWith(color: colors.onSurface.withValues(alpha: 0.7)),
+          ),
         ],
       ),
     );
@@ -340,7 +726,7 @@ class _MoodTrendChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (entries.isEmpty) {
-      return const Center(child: Text('No mood entries yet.'));
+      return const SizedBox.shrink();
     }
 
     final sorted = List<FeelingEntry>.from(entries)
@@ -534,7 +920,7 @@ class _VitalsBarChart extends StatelessWidget {
                     children: [
                       Tooltip(
                         message:
-                            '${ordered[i].systolic}/${ordered[i].diastolic} mmHg · HR ${ordered[i].heartRate}',
+                            '${ordered[i].systolic}/${ordered[i].diastolic} mmHg - HR ${ordered[i].heartRate}',
                         child: Align(
                           alignment: Alignment.bottomCenter,
                           child: Container(

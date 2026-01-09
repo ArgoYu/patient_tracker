@@ -485,73 +485,6 @@ class _SubstanceUseDisorderPageState extends State<SubstanceUseDisorderPage> {
       },
     ];
 
-    final metrics = [
-      {
-        'icon': Icons.flag_outlined,
-        'title': 'Current streak',
-        'subtitle': '12 days substance-free',
-      },
-      {
-        'icon': Icons.task_alt_outlined,
-        'title': "Today's focus",
-        'subtitle': 'Log cravings after lunch and review coping plan',
-      },
-      {
-        'icon': Icons.groups_3_outlined,
-        'title': 'Next support circle',
-        'subtitle': 'Tuesday 6:00 PM (virtual check-in)',
-      },
-    ];
-
-    final contacts = [
-      {
-        'icon': Icons.support_agent,
-        'title': 'Care coach AI',
-        'subtitle': 'Check-in prompts and personalized goals',
-        'color': cs.primary,
-        'conversation': ConversationType.coach,
-      },
-      {
-        'icon': Icons.local_hospital,
-        'title': activeCarePlan.physician,
-        'subtitle': '${upcomingVisit.doctor} · replies within 1 business day',
-        'color': cs.secondary,
-        'conversation': ConversationType.physician,
-      },
-      {
-        'icon': Icons.volunteer_activism,
-        'title': activeSafetyPlan.emergencyContactName.isNotEmpty
-            ? activeSafetyPlan.emergencyContactName
-            : 'Nursing support team',
-        'subtitle': activeSafetyPlan.emergencyContactPhone.isNotEmpty
-            ? 'Emergency contact · ${activeSafetyPlan.emergencyContactPhone}'
-            : 'Nursing care team · weekdays 08:00-18:00',
-        'color': cs.tertiary,
-        'conversation': ConversationType.nurse,
-      },
-    ];
-
-    final resources = [
-      {
-        'icon': Icons.note_alt_outlined,
-        'title': 'Cravings journal',
-        'subtitle': 'Capture triggers, intensity, and what you tried.',
-        'action': 'Open log',
-      },
-      {
-        'icon': Icons.lightbulb_outline,
-        'title': 'Relapse prevention toolkit',
-        'subtitle': 'Download worksheets to plan for challenging moments.',
-        'action': 'Download',
-      },
-      {
-        'icon': Icons.location_on_outlined,
-        'title': 'Local recovery meetings',
-        'subtitle': 'Find mutual support groups in your area.',
-        'action': 'Browse',
-      },
-    ];
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Substance Use Disorder'),
@@ -559,105 +492,7 @@ class _SubstanceUseDisorderPageState extends State<SubstanceUseDisorderPage> {
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final tiles = <Widget>[
-            for (final metric in metrics)
-              _SubstanceFeatureTile(
-                icon: metric['icon'] as IconData,
-                title: metric['title'] as String,
-                subtitle: metric['subtitle'] as String,
-                accentColor: cs.primary,
-              ),
-            _SubstanceFeatureTile(
-              icon: Icons.favorite_outline,
-              title: 'Daily recovery check-in',
-              subtitle:
-                  'Log cravings, mood, and triggers to keep your plan up to date.',
-              accentColor: cs.tertiary,
-              actions: [
-                FilledButton.tonal(
-                  onPressed: () => showToast(
-                    context,
-                    'Opening daily check-in (placeholder)',
-                  ),
-                  child: const Text('Start check-in'),
-                ),
-              ],
-            ),
-            for (final contact in contacts)
-              _SubstanceFeatureTile(
-                icon: contact['icon'] as IconData,
-                title: contact['title'] as String,
-                subtitle: contact['subtitle'] as String,
-                accentColor: (contact['color'] as Color?) ?? cs.primary,
-                actions: [
-                  FilledButton.tonal(
-                    onPressed: () => _openCareChat(
-                      context,
-                      initialConversation:
-                          contact['conversation'] as ConversationType?,
-                    ),
-                    child: const Text('Chat now'),
-                  ),
-                ],
-              ),
-            _SubstanceFeatureTile(
-              icon: Icons.chat_bubble_outline,
-              title: 'Care team inbox',
-              subtitle: 'Catch up on replies or start a new message thread.',
-              accentColor: cs.primary,
-              actions: [
-                FilledButton.icon(
-                  onPressed: () => _openCareChat(context),
-                  icon: const Icon(Icons.open_in_new),
-                  label: const Text('Open inbox'),
-                ),
-              ],
-            ),
-            _SubstanceFeatureTile(
-              icon: Icons.groups_outlined,
-              title: 'Community support circles',
-              subtitle:
-                  'Join moderated peer conversations and share progress ideas.',
-              accentColor: cs.secondary,
-              actions: [
-                FilledButton.tonal(
-                  onPressed: () => showToast(
-                    context,
-                    'Opening community support circles (placeholder)',
-                  ),
-                  child: const Text('Browse sessions'),
-                ),
-              ],
-            ),
-            for (final res in resources)
-              _SubstanceFeatureTile(
-                icon: res['icon'] as IconData,
-                title: res['title'] as String,
-                subtitle: res['subtitle'] as String,
-                accentColor: cs.primary,
-                actions: [
-                  FilledButton.tonal(
-                    onPressed: () => showToast(
-                      context,
-                      'Opening ${(res['title'] as String).toLowerCase()} (placeholder)',
-                    ),
-                    child: Text(res['action'] as String),
-                  ),
-                ],
-              ),
-          ];
-
           const spacing = 20.0;
-          final width = constraints.maxWidth;
-          final crossAxisCount = width >= 1120
-              ? 3
-              : width >= 720
-                  ? 2
-                  : 1;
-          final tileWidth = crossAxisCount == 1
-              ? width
-              : (width - spacing * (crossAxisCount - 1)) / crossAxisCount;
-
           return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
             child: Column(
@@ -718,18 +553,6 @@ class _SubstanceUseDisorderPageState extends State<SubstanceUseDisorderPage> {
                     ),
                   ),
                 ],
-                const SizedBox(height: spacing),
-                Wrap(
-                  spacing: spacing,
-                  runSpacing: spacing,
-                  children: [
-                    for (final tile in tiles)
-                      SizedBox(
-                        width: crossAxisCount == 1 ? width : tileWidth,
-                        child: tile,
-                      ),
-                  ],
-                ),
               ],
             ),
           );
