@@ -325,43 +325,64 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
                             .withValues(alpha: 0.6),
                       ),
                 ),
-                const SizedBox(height: 14),
-                Text('Timeline', style: Theme.of(context).textTheme.labelLarge),
-                const SizedBox(height: 6),
-                if (logs.isEmpty)
-                  Text('No check-ins yet', style: _secondaryText(context))
-                else
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: logs
-                        .map(
-                          (d) => Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withValues(alpha: 0.06),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              formatDateTime(d),
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelMedium
-                                  ?.copyWith(
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () {
+                    final checkIns = med.intakeLog
+                        .map((entry) =>
+                            RxCheckIn(timestamp: entry, medicationId: med.name))
+                        .toList();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => MedicationTimelineScreen(
+                          medicationId: med.name,
+                          medicationDisplayName: med.name,
+                          checkIns: checkIns,
+                        ),
+                      ),
+                    );
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    foregroundColor:
+                        Theme.of(context).colorScheme.onSurfaceVariant,
+                    minimumSize: const Size(0, 36),
+                    alignment: Alignment.centerLeft,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.calendar_month_outlined,
+                          size: 18,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant
+                              .withValues(alpha: 0.75)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Timeline',
+                          style:
+                              Theme.of(context).textTheme.labelLarge?.copyWith(
                                     color: Theme.of(context)
                                         .colorScheme
-                                        .onSurface
-                                        .withValues(alpha: 0.7),
+                                        .onSurfaceVariant
+                                        .withValues(alpha: 0.9),
                                   ),
-                            ),
-                          ),
-                        )
-                        .toList(),
+                        ),
+                      ),
+                      Text(
+                        'View history →',
+                        style:
+                            Theme.of(context).textTheme.labelLarge?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant
+                                      .withValues(alpha: 0.9),
+                                ),
+                      ),
+                    ],
                   ),
+                ),
               ],
             ),
           );

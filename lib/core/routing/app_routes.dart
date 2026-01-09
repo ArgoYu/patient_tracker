@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app_modules.dart'
-    show MessagesPage, RootShell, ChatHomePage, MyAiPage;
+    show MessagesPage, RootShell, ChatHomePage, MyAiPage, MedicationHistoryPage;
 import '../../features/onboarding/global_onboarding_screen.dart';
 import '../../features/auth/auth_gate_page.dart';
 import '../../features/auth/auth_service.dart';
@@ -11,6 +11,8 @@ import '../../features/interpret/view/interpret_page.dart';
 import '../../features/ask_ai_doctor/chat_screen.dart';
 import '../../features/timeline/timeline_page.dart';
 import '../../features/auth/two_factor_screen.dart';
+import '../../features/medications/medication_timeline_screen.dart';
+import '../../data/models/rx_medication.dart';
 
 /// Central place for route names and builders.
 class AppRoutes {
@@ -31,6 +33,8 @@ class AppRoutes {
   static const String askAiDoctorChat = AskAiDoctorChatScreen.routeName;
   static const String timelinePlanner = '/timeline-planner';
   static const String twoFactor = TwoFactorScreen.routeName;
+  static const String medicationHistory = MedicationHistoryPage.routeName;
+  static const String medicationTimeline = '/rx-timeline';
 
   static Map<String, WidgetBuilder> routes = {
     globalOnboarding: (context) {
@@ -61,6 +65,24 @@ class AppRoutes {
     interpret: (_) => const InterpretPage(),
     askAiDoctorChat: (_) => const AskAiDoctorChatScreen(),
     timelinePlanner: (_) => const TimelinePlannerPage(),
+    medicationHistory: (context) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is RxMedication) {
+        return MedicationHistoryPage(medication: args);
+      }
+      return const RootShell();
+    },
+    medicationTimeline: (context) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is MedicationTimelineArgs) {
+        return MedicationTimelineScreen(
+          medicationId: args.medicationId,
+          medicationDisplayName: args.medicationDisplayName,
+          checkIns: args.checkIns,
+        );
+      }
+      return const MedicationTimelineScreen(medicationId: 'unknown');
+    },
     ...MyAiPage.routes,
     twoFactor: (_) => const TwoFactorScreen(),
   };
