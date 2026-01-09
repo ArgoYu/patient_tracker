@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:patient_tracker/core/theme/theme_tokens.dart';
 import 'package:patient_tracker/data/models/ai_co_consult_outcome.dart';
 import 'package:patient_tracker/features/my_ai/ai_co_consult_coordinator.dart'
     show AiCoConsultCoordinator, AiCoConsultListeningStatus;
@@ -115,24 +116,46 @@ class _AiGenerateReportButtonState extends State<AiGenerateReportButton> {
             break;
         }
 
+        final theme = Theme.of(context);
+        final buttonStyle = ButtonStyle(
+          backgroundColor: MaterialStateProperty.resolveWith<Color?>(
+            (states) {
+              if (states.contains(MaterialState.disabled)) {
+                return theme.colorScheme.onSurface.withOpacity(0.08);
+              }
+              return theme.colorScheme.primary.withOpacity(0.18);
+            },
+          ),
+          foregroundColor:
+              MaterialStateProperty.all(theme.colorScheme.onSurface),
+          shape: MaterialStateProperty.all(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppThemeTokens.smallRadius),
+            ),
+          ),
+          elevation: MaterialStateProperty.all(0),
+          padding: MaterialStateProperty.all(
+            const EdgeInsets.symmetric(vertical: 14),
+          ),
+        );
+
         return SizedBox(
           width: double.infinity,
-          child: ElevatedButton.icon(
+          child: FilledButton.tonalIcon(
+            style: buttonStyle,
             onPressed:
                 canGenerate ? () => _handleGenerateReport(context) : null,
             icon: _busy
-                ? const SizedBox(
+                ? SizedBox(
                     width: 18,
                     height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: theme.colorScheme.onSurface,
+                    ),
                   )
-                : Icon(icon),
+                : Icon(icon, size: 20),
             label: Text(_busy ? 'Generating…' : label),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
           ),
         );
       },

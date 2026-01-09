@@ -2,11 +2,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:patient_tracker/core/theme/theme_tokens.dart';
+import 'package:patient_tracker/shared/widgets/layout_cards.dart';
 
 import '../../auth/auth_session_scope.dart';
 import '../../../data/models/models.dart';
-import '../../../shared/app_settings.dart';
-import '../../../shared/widgets/glass.dart';
 
 enum HomePanel { goals, meds, feelings, sud }
 
@@ -136,13 +136,108 @@ class _PatientHomePageState extends State<PatientHomePage> {
     setState(() {});
   }
 
+  DashboardCard _buildPanel(HomePanel panel) {
+    switch (panel) {
+      case HomePanel.goals:
+        return DashboardCard(
+          icon: Icons.flag,
+          title: 'My Goals',
+          status: _statusForPanel(panel),
+          onTap: () => _handleGoalsTap(),
+          isPrimary: true,
+        );
+      case HomePanel.meds:
+        return DashboardCard(
+          icon: Icons.medication,
+          title: 'Rx Suggestions',
+          status: _statusForPanel(panel),
+          onTap: () => _handleMedsTap(),
+        );
+      case HomePanel.feelings:
+        return DashboardCard(
+          icon: Icons.show_chart,
+          title: 'Trends',
+          status: _statusForPanel(panel),
+          onTap: () => _handleTrendsTap(),
+        );
+      case HomePanel.sud:
+        return DashboardCard(
+          icon: Icons.medical_services_outlined,
+          title: 'Substance Use Disorder',
+          status: _statusForPanel(panel),
+          onTap: () => _handleSudTap(),
+        );
+    }
+  }
+
+  String _statusForPanel(HomePanel panel) {
+    switch (panel) {
+      case HomePanel.goals:
+        if (widget.goals.isEmpty) return 'No goals yet';
+        return '${widget.goals.length} goals in progress';
+      case HomePanel.meds:
+        if (widget.meds.isEmpty) return 'No new suggestions';
+        return '${widget.meds.length} meds tracked';
+      case HomePanel.feelings:
+        final latestFeeling = _latestBy<FeelingEntry>(
+          widget.feelingHistory,
+          (entry) => entry.date,
+        );
+        if (latestFeeling != null) {
+          return 'Mood logged ${_formatRelative(latestFeeling.date)}';
+        }
+        final latestVital = _latestBy<VitalEntry>(
+          widget.vitalHistory,
+          (entry) => entry.date,
+        );
+        if (latestVital != null) {
+          return 'Vitals ${latestVital.label()}';
+        }
+        return 'Tap to view trends';
+      case HomePanel.sud:
+        return 'Tap to review your SUD care plan';
+    }
+  }
+
+  T? _latestBy<T>(List<T> entries, DateTime Function(T) selector) {
+    if (entries.isEmpty) return null;
+    return entries.reduce((prev, next) {
+      final prevDate = selector(prev);
+      final nextDate = selector(next);
+      return nextDate.isAfter(prevDate) ? next : prev;
+    });
+  }
+
+  String _formatRelative(DateTime date) {
+    final diff = _now.difference(date);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) {
+      final minutes = diff.inMinutes;
+      return '$minutes min${minutes == 1 ? '' : 's'} ago';
+    }
+    if (diff.inHours < 24) {
+      final hours = diff.inHours;
+      return '$hours hr${hours == 1 ? '' : 's'} ago';
+    }
+    final days = diff.inDays;
+    return '$days day${days == 1 ? '' : 's'} ago';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
     final userAccount = AuthSessionScope.of(context).currentUserAccount;
     final greetingName = userAccount?.displayName ?? 'Guest';
     return Scaffold(
       appBar: AppBar(
-        title: Text('${_greeting()}, $greetingName'),
+        title: Text(
+          '${_greeting()}, $greetingName',
+          style: textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w500,
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -160,7 +255,12 @@ class _PatientHomePageState extends State<PatientHomePage> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        padding: EdgeInsets.fromLTRB(
+          AppThemeTokens.pagePadding,
+          AppThemeTokens.pagePadding,
+          AppThemeTokens.pagePadding,
+          AppThemeTokens.pagePadding,
+        ),
         children: [
           Center(
             child: PatientInfoHeader(
@@ -171,37 +271,10 @@ class _PatientHomePageState extends State<PatientHomePage> {
               primaryDoctor: widget.nextVisit.doctor,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: AppThemeTokens.gap + 6),
           _HomePanelsGrid(
             panels: widget.panelsOrder,
-            buildPanel: (panel) {
-              switch (panel) {
-                case HomePanel.goals:
-                  return GlassSmallPanel(
-                    icon: Icons.flag,
-                    label: 'My Goals',
-                    onTap: () => _handleGoalsTap(),
-                  );
-                case HomePanel.meds:
-                  return GlassSmallPanel(
-                    icon: Icons.medication,
-                    label: 'Rx Suggestions',
-                    onTap: () => _handleMedsTap(),
-                  );
-                case HomePanel.feelings:
-                  return GlassSmallPanel(
-                    icon: Icons.show_chart,
-                    label: 'Trends',
-                    onTap: () => _handleTrendsTap(),
-                  );
-                case HomePanel.sud:
-                  return GlassSmallPanel(
-                    icon: Icons.medical_services_outlined,
-                    label: 'Substance Use Disorder',
-                    onTap: () => _handleSudTap(),
-                  );
-              }
-            },
+            buildPanel: (panel) => _buildPanel(panel),
           ),
           const SizedBox(height: 24),
         ],
@@ -252,7 +325,9 @@ class _PatientInfoHeaderState extends State<PatientInfoHeader>
   @override
   Widget build(BuildContext context) {
     final avatarUrl = widget.profile.avatarUrl?.trim() ?? '';
-    final text = Theme.of(context).textTheme;
+    final theme = Theme.of(context);
+    final text = theme.textTheme;
+    final colorScheme = theme.colorScheme;
     final symptoms = () {
       final custom = widget.symptoms?.trim() ?? '';
       if (custom.isNotEmpty) return custom;
@@ -266,6 +341,10 @@ class _PatientInfoHeaderState extends State<PatientInfoHeader>
       }
       return widget.profile.name;
     }();
+    final infoParts = <String>[];
+    if (symptoms.isNotEmpty) infoParts.add(symptoms);
+    if (doctor.isNotEmpty) infoParts.add(doctor);
+    final infoLine = infoParts.join(' · ');
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -274,13 +353,16 @@ class _PatientInfoHeaderState extends State<PatientInfoHeader>
           onTap: widget.onOpenProfile,
           child: CircleAvatar(
             radius: 40,
+            backgroundColor: colorScheme.surfaceVariant,
+            foregroundColor: colorScheme.onSurface,
             backgroundImage:
                 avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
-            child:
-                avatarUrl.isEmpty ? const Icon(Icons.person, size: 40) : null,
+            child: avatarUrl.isEmpty
+                ? Icon(Icons.person, size: 40, color: colorScheme.onSurface)
+                : null,
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: AppThemeTokens.gap),
         FadeTransition(
           opacity: _opacity,
           child: SlideTransition(
@@ -291,24 +373,19 @@ class _PatientInfoHeaderState extends State<PatientInfoHeader>
                 children: [
                   Text(
                     headerName,
-                    style: text.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+                    style: text.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      height: 1.35,
+                      color: colorScheme.onSurface,
                     ),
                   ),
-                  if (symptoms.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+                  if (infoLine.isNotEmpty) ...[
+                    SizedBox(height: AppThemeTokens.gap / 2),
                     Text(
-                      'Symptoms: $symptoms',
-                      style: text.bodySmall,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                  if (doctor.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      'Primary doctor: $doctor',
+                      infoLine,
                       style: text.bodySmall?.copyWith(
-                        color: text.bodySmall?.color?.withValues(alpha: 0.85),
+                        color: colorScheme.onSurfaceVariant,
+                        height: 1.45,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -377,8 +454,8 @@ class _HomePanelsGrid extends StatelessWidget {
       itemCount: panels.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
+        mainAxisSpacing: AppThemeTokens.gap,
+        crossAxisSpacing: AppThemeTokens.gap,
         childAspectRatio: 1,
       ),
       itemBuilder: (context, index) => buildPanel(panels[index]),
@@ -386,95 +463,3 @@ class _HomePanelsGrid extends StatelessWidget {
   }
 }
 
-class GlassSmallPanel extends StatefulWidget {
-  const GlassSmallPanel(
-      {super.key, required this.icon, required this.label, this.onTap});
-
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-
-  @override
-  State<GlassSmallPanel> createState() => _GlassSmallPanelState();
-}
-
-class _GlassSmallPanelState extends State<GlassSmallPanel> {
-  bool _pressed = false;
-
-  Color _accent(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final palette = <Color>[
-      cs.primary,
-      cs.tertiary,
-      const Color(0xFF22C55E),
-      const Color(0xFF06B6D4),
-      const Color(0xFFA855F7),
-    ];
-    return palette[widget.label.hashCode.abs() % palette.length];
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = _accent(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final settings = AppSettings.of(context);
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: widget.onTap,
-        borderRadius: BorderRadius.circular(18),
-        splashColor: accent.withValues(alpha: 0.07),
-        highlightColor: accent.withValues(alpha: 0.035),
-        onHighlightChanged: (value) => setState(() => _pressed = value),
-        child: AnimatedScale(
-          duration: const Duration(milliseconds: 120),
-          curve: Curves.easeOut,
-          scale: _pressed ? 0.98 : 1.0,
-          child: Glass(
-            radius: 18,
-            padding: const EdgeInsets.all(14),
-            lightOpacity: (settings.lightOpacity - 0.005).clamp(0.0, 1.0),
-            darkOpacity: (settings.darkOpacity - 0.005).clamp(0.0, 1.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: accent.withValues(alpha: 0.20)),
-                  ),
-                  child: Icon(widget.icon, color: accent, size: 26),
-                ),
-                const Spacer(),
-                Text(
-                  widget.label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    height: 1.2,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Align(
-                  alignment: Alignment.bottomRight,
-                  child: Icon(
-                    Icons.arrow_outward,
-                    size: 16,
-                    color: (isDark ? Colors.white : Colors.black)
-                        .withValues(alpha: isDark ? 0.30 : 0.22),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

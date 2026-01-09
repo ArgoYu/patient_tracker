@@ -895,6 +895,7 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
     return AnimatedBuilder(
       animation: widget.coordinator,
       builder: (context, _) {
+        final theme = Theme.of(context);
         final outcome = widget.coordinator.latestOutcome;
         final followUps = outcome?.followUpQuestions ?? const <String>[];
         final cards = <Widget>[
@@ -907,16 +908,16 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
             isCompleting: _completingSession,
             onViewSummary: null,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: AppThemeTokens.gap),
           const AiGenerateReportButton(),
-          const SizedBox(height: 12),
+          SizedBox(height: AppThemeTokens.gap),
           _ReportStatusNotice(status: widget.coordinator.reportStatus),
         ];
 
         final hasPatientAccess =
             widget.coordinator.canPatientViewReport && outcome != null;
         if (hasPatientAccess) {
-          cards.add(const SizedBox(height: 12));
+          cards.add(SizedBox(height: AppThemeTokens.gap));
           cards.add(
             _AutoProcessActionsCard(
               states: Map<_AutoProcess, _AutoProcessState>.unmodifiable(
@@ -931,7 +932,7 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
             ),
           );
         } else {
-          cards.add(const SizedBox(height: 12));
+          cards.add(SizedBox(height: AppThemeTokens.gap));
           cards.add(
             _PatientViewLockedCard(
               status: widget.coordinator.reportStatus,
@@ -969,11 +970,21 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
             ),
             actions: [
               IconButton(
+                iconSize: 22,
+                padding: const EdgeInsets.all(10),
+                constraints:
+                    const BoxConstraints(minWidth: 40, minHeight: 40),
+                color: theme.colorScheme.onSurfaceVariant,
                 icon: const Icon(Icons.verified_user_outlined),
                 tooltip: 'Consent & permissions',
                 onPressed: () => _showSessionControlsDialog(),
               ),
               IconButton(
+                iconSize: 22,
+                padding: const EdgeInsets.all(10),
+                constraints:
+                    const BoxConstraints(minWidth: 40, minHeight: 40),
+                color: theme.colorScheme.onSurfaceVariant,
                 icon: const Icon(Icons.share_outlined),
                 tooltip: 'Share report',
                 onPressed: () => _handleShareButton(outcome),
@@ -984,10 +995,15 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
             children: [
               ListView.separated(
                 controller: _scrollController,
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                padding: EdgeInsets.fromLTRB(
+                  AppThemeTokens.pagePadding,
+                  AppThemeTokens.pagePadding,
+                  AppThemeTokens.pagePadding,
+                  AppThemeTokens.pagePadding,
+                ),
                 itemBuilder: (context, index) => cards[index],
                 separatorBuilder: (context, index) =>
-                    const SizedBox(height: 12),
+                    SizedBox(height: AppThemeTokens.gap),
                 itemCount: cards.length,
               ),
             ],
@@ -1091,7 +1107,7 @@ class _CoConsultDetailHeader extends StatelessWidget {
           fontFeatures: const [FontFeature.tabularFigures()],
         );
 
-    return _DetailCard(
+    return PrimaryPanelCard(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -3176,11 +3192,50 @@ class _ReportStatusNotice extends StatelessWidget {
     final title = _statusTitle(status);
     final description = _statusDescription(status);
     final icon = _statusIcon(status);
-    return Card(
-      child: ListTile(
-        leading: Icon(icon, color: Theme.of(context).colorScheme.primary),
-        title: Text(title),
-        subtitle: Text(description),
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(AppThemeTokens.cardPadding),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceVariant,
+        borderRadius: BorderRadius.circular(AppThemeTokens.cardRadius),
+        border: Border.all(
+          color: theme.colorScheme.onSurface.withOpacity(0.06),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withOpacity(0.16),
+              borderRadius: BorderRadius.circular(AppThemeTokens.smallRadius),
+            ),
+            child: Icon(icon, color: theme.colorScheme.primary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -3247,33 +3302,50 @@ class _PatientViewLockedCard extends StatelessWidget {
         : status == ConsultReportStatus.reportRejected
             ? 'This report was flagged for regeneration. Capture more context and try again.'
             : 'The report will unlock once a clinician signs off on it.';
-    return Card(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              message,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            if (status == ConsultReportStatus.reportPendingReview &&
-                onReview != null) ...[
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                onPressed: onReview,
-                icon: const Icon(Icons.visibility),
-                label: const Text('Doctor preview and sign'),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Open the AI Consent page to review and sign the report before sharing it with the patient.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ],
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(AppThemeTokens.cardPadding),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceVariant,
+        borderRadius: BorderRadius.circular(AppThemeTokens.cardRadius),
+        border: Border.all(
+          color: theme.colorScheme.onSurface.withOpacity(0.04),
         ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            message,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          if (status == ConsultReportStatus.reportPendingReview &&
+              onReview != null) ...[
+            SizedBox(height: AppThemeTokens.gap),
+            FilledButton.tonalIcon(
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                backgroundColor: theme.colorScheme.primary.withOpacity(0.16),
+                foregroundColor: theme.colorScheme.onSurface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppThemeTokens.smallRadius),
+                ),
+              ),
+              onPressed: onReview,
+              icon: const Icon(Icons.visibility, size: 20),
+              label: const Text('Doctor preview and sign'),
+            ),
+            SizedBox(height: AppThemeTokens.gap / 2),
+            Text(
+              'Open the AI Consent page to review and sign the report before sharing it with the patient.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

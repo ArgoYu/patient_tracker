@@ -78,12 +78,18 @@ class AppBackdrop extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colors = isDark ? palette.darkGradient : palette.lightGradient;
+    final scheme = Theme.of(context).colorScheme;
+    final backgroundColors = [
+      scheme.background,
+      ...colors,
+      scheme.background,
+    ];
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: colors,
+          colors: backgroundColors,
         ),
       ),
       child: child,

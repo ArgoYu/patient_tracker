@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:patient_tracker/app.dart';
-import 'package:patient_tracker/features/home/view/home_page.dart';
+import 'package:patient_tracker/shared/widgets/layout_cards.dart';
 
 void main() {
   testWidgets('tapping Substance Use Disorder opens dedicated page',
@@ -12,7 +12,7 @@ void main() {
 
     // Sanity check: verify other panels navigate correctly.
     final goalsInkWellFinder = find.descendant(
-      of: find.widgetWithText(GlassSmallPanel, 'My Goals'),
+      of: find.widgetWithText(DashboardCard, 'My Goals'),
       matching: find.byType(InkWell),
     );
     final goalsInkWell = tester.widget<InkWell>(goalsInkWellFinder);
@@ -33,7 +33,7 @@ void main() {
     final sudInkWellFinder = find.descendant(
       of: find.ancestor(
         of: sudLabelFinder,
-        matching: find.byType(GlassSmallPanel),
+        matching: find.byType(DashboardCard),
       ),
       matching: find.byType(InkWell),
     );
