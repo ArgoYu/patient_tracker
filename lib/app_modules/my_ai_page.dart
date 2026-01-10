@@ -908,16 +908,16 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
             isCompleting: _completingSession,
             onViewSummary: null,
           ),
-          SizedBox(height: AppThemeTokens.gap),
+          const SizedBox(height: AppThemeTokens.gap),
           const AiGenerateReportButton(),
-          SizedBox(height: AppThemeTokens.gap),
+          const SizedBox(height: AppThemeTokens.gap),
           _ReportStatusNotice(status: widget.coordinator.reportStatus),
         ];
 
         final hasPatientAccess =
             widget.coordinator.canPatientViewReport && outcome != null;
         if (hasPatientAccess) {
-          cards.add(SizedBox(height: AppThemeTokens.gap));
+          cards.add(const SizedBox(height: AppThemeTokens.gap));
           cards.add(
             _AutoProcessActionsCard(
               states: Map<_AutoProcess, _AutoProcessState>.unmodifiable(
@@ -932,7 +932,7 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
             ),
           );
         } else {
-          cards.add(SizedBox(height: AppThemeTokens.gap));
+          cards.add(const SizedBox(height: AppThemeTokens.gap));
           cards.add(
             _PatientViewLockedCard(
               status: widget.coordinator.reportStatus,
@@ -995,7 +995,7 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
             children: [
               ListView.separated(
                 controller: _scrollController,
-                padding: EdgeInsets.fromLTRB(
+                padding: const EdgeInsets.fromLTRB(
                   AppThemeTokens.pagePadding,
                   AppThemeTokens.pagePadding,
                   AppThemeTokens.pagePadding,
@@ -1003,7 +1003,7 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
                 ),
                 itemBuilder: (context, index) => cards[index],
                 separatorBuilder: (context, index) =>
-                    SizedBox(height: AppThemeTokens.gap),
+                    const SizedBox(height: AppThemeTokens.gap),
                 itemCount: cards.length,
               ),
             ],
@@ -3196,7 +3196,7 @@ class _ReportStatusNotice extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppThemeTokens.cardPadding),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant,
+        color: theme.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(AppThemeTokens.cardRadius),
         border: Border.all(
           color: theme.colorScheme.onSurface.withOpacity(0.06),
@@ -3306,7 +3306,7 @@ class _PatientViewLockedCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppThemeTokens.cardPadding),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant,
+        color: theme.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(AppThemeTokens.cardRadius),
         border: Border.all(
           color: theme.colorScheme.onSurface.withOpacity(0.04),
@@ -3323,7 +3323,7 @@ class _PatientViewLockedCard extends StatelessWidget {
           ),
           if (status == ConsultReportStatus.reportPendingReview &&
               onReview != null) ...[
-            SizedBox(height: AppThemeTokens.gap),
+            const SizedBox(height: AppThemeTokens.gap),
             FilledButton.tonalIcon(
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -3337,7 +3337,7 @@ class _PatientViewLockedCard extends StatelessWidget {
               icon: const Icon(Icons.visibility, size: 20),
               label: const Text('Doctor preview and sign'),
             ),
-            SizedBox(height: AppThemeTokens.gap / 2),
+            const SizedBox(height: AppThemeTokens.gap / 2),
             Text(
               'Open the AI Consent page to review and sign the report before sharing it with the patient.',
               style: theme.textTheme.bodySmall?.copyWith(

@@ -499,7 +499,7 @@ Future<ScheduleItem?> _addScheduleDialog(BuildContext context) async {
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<ScheduleKind>(
-                value: kind,
+                initialValue: kind,
                 items: ScheduleKind.values
                     .map((k) =>
                         DropdownMenuItem(value: k, child: Text(k.label())))

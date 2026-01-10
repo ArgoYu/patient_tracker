@@ -42,7 +42,7 @@ class MedicationTimelineScreen extends StatelessWidget {
       bucket.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     }
     final sortedKeys = map.keys.toList()..sort((a, b) => b.compareTo(a));
-    final sortedMap = LinkedHashMap<DateTime, List<RxCheckIn>>();
+    final sortedMap = <DateTime, List<RxCheckIn>>{};
     for (final key in sortedKeys) {
       sortedMap[key] = map[key] ?? <RxCheckIn>[];
     }

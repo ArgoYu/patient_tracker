@@ -3,9 +3,12 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/color_scheme_extensions.dart';
+import '../../../core/theme/theme_tokens.dart';
 import '../../../core/utils/date_formats.dart';
 import '../../../data/models/models.dart';
 import '../../../shared/widgets/glass.dart';
+import '../../../shared/widgets/layout_cards.dart';
 import '../../../shared/utils/toast.dart';
 import '../../../app_modules.dart' show FeelingsPage, FeelingsResult;
 import '../widgets/next_visit_hero_card.dart';
@@ -79,15 +82,67 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
 
   String _latestFeelingLabel() {
     if (widget.feelingHistory.isEmpty) {
-      return 'No mood entries yet. Tap to log how you feel.';
+      return 'No mood check-ins yet. Log how you feel when you are ready.';
     }
     final latest = widget.feelingHistory.last;
-    return 'Last logged ${formatDateTime(latest.date)} · Score ${latest.score}/5';
+    return 'Last check-in ${formatDateTime(latest.date)}';
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  Widget _buildRecentAlerts(
+    BuildContext context,
+    List<AppNotification> notifications,
+  ) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    if (notifications.isEmpty) {
+      return SectionContainer(
+        padding: const EdgeInsets.all(AppThemeTokens.cardPadding),
+        child: Row(
+          children: [
+            Icon(Icons.inbox_outlined, color: scheme.onSurfaceVariant),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'You are all caught up for now.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.secondaryTextColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SectionContainer(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppThemeTokens.cardPadding,
+        vertical: 4,
+      ),
+      child: Column(
+        children: [
+          for (var index = 0; index < notifications.length; index++) ...[
+            _RecentAlertTile(notification: notifications[index]),
+            if (index < notifications.length - 1)
+              Divider(
+                color: scheme.onSurface.withValues(alpha: 0.08),
+                height: 1,
+              ),
+          ],
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final notifications = widget.list;
+    final isVisitToday = _isSameDay(widget.nextVisit.when, DateTime.now());
     return Scaffold(
       appBar: AppBar(
         title: const Text('Notifications'),
@@ -95,13 +150,33 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
         elevation: 0,
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        padding: const EdgeInsets.fromLTRB(
+          AppThemeTokens.pagePadding,
+          AppThemeTokens.pagePadding,
+          AppThemeTokens.pagePadding,
+          32,
+        ),
         children: [
+          Text(
+            'Today',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: scheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'What needs my attention today?',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: scheme.secondaryTextColor,
+            ),
+          ),
+          const SizedBox(height: AppThemeTokens.gap),
           LayoutBuilder(
             builder: (context, constraints) {
               final width = constraints.maxWidth;
-              const gap = 12.0;
-              final wide = width > 520;
+              const gap = AppThemeTokens.gap;
+              final wide = width > 560;
               final double half = wide ? (width - gap) / 2 : width;
               return Wrap(
                 spacing: gap,
@@ -111,15 +186,17 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
                     width: width,
                     child: NextVisitHeroCard(
                       visit: widget.nextVisit,
+                      isToday: isVisitToday,
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => VisitDetailsPage(visit: widget.nextVisit),
+                          builder: (_) =>
+                              VisitDetailsPage(visit: widget.nextVisit),
                         ),
                       ),
                     ),
                   ),
                   SizedBox(
-                    width: width,
+                    width: half,
                     child: _FeelingsHeroCard(
                       score: _currentScore,
                       summary: _latestFeelingLabel(),
@@ -132,10 +209,13 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
                       icon: Icons.person_outline,
                       title: 'Care team contact',
                       body:
-                          '${widget.nextVisit.doctor} · Tap to review visit details',
+                          '${widget.nextVisit.doctor} · ${widget.nextVisit.mode}',
+                      supportingText:
+                          'Next check-in ${formatDateTime(widget.nextVisit.when)}',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => VisitDetailsPage(visit: widget.nextVisit),
+                          builder: (_) =>
+                              VisitDetailsPage(visit: widget.nextVisit),
                         ),
                       ),
                     ),
@@ -144,44 +224,73 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
               );
             },
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppThemeTokens.pagePadding),
           Text(
             'Recent alerts',
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(fontWeight: FontWeight.w600),
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurfaceVariant,
+            ),
           ),
-          const SizedBox(height: 12),
-          if (notifications.isEmpty)
-            const Glass(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Icon(Icons.inbox_outlined),
-                    SizedBox(width: 12),
-                    Expanded(child: Text('You’re all caught up for now.')),
-                  ],
-                ),
-              ),
-            )
-          else
-            ...notifications.map(
-              (item) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Glass(
-                  child: ListTile(
-                    leading: const Icon(Icons.notifications),
-                    title: Text(
-                      item.title,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    subtitle: Text('${formatDateTime(item.time)} · ${item.body}'),
-                  ),
-                ),
+          const SizedBox(height: 10),
+          _buildRecentAlerts(context, notifications),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecentAlertTile extends StatelessWidget {
+  const _RecentAlertTile({required this.notification});
+
+  final AppNotification notification;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(AppThemeTokens.smallRadius),
+              border: Border.all(
+                color: scheme.cardBorderColor.withValues(alpha: 0.35),
               ),
             ),
+            child: Icon(
+              Icons.notifications_none,
+              size: 18,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  notification.title,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${formatDateTime(notification.time)} · ${notification.body}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.secondaryTextColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -202,19 +311,30 @@ class _FeelingsHeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Glass(
+    final scheme = theme.colorScheme;
+    final cardColor = scheme.heroCardColor(scheme.surfaceContainerHigh);
+    return Card(
+      color: cardColor,
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(AppThemeTokens.cardPadding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  radius: 26,
-                  backgroundColor:
-                      theme.colorScheme.secondary.withValues(alpha: 0.16),
-                  child: const Icon(Icons.mood),
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: scheme.secondary.withValues(alpha: 0.14),
+                    borderRadius:
+                        BorderRadius.circular(AppThemeTokens.smallRadius),
+                  ),
+                  child: Icon(
+                    Icons.mood,
+                    color: scheme.secondary,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -222,31 +342,54 @@ class _FeelingsHeroCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Today’s feeling',
+                        "Today's feeling",
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(summary),
+                      const SizedBox(height: 6),
+                      Text(
+                        summary,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.secondaryTextColor,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                Text(
-                  '$score / 5',
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerHighest,
+                    borderRadius:
+                        BorderRadius.circular(AppThemeTokens.smallRadius),
+                    border: Border.all(
+                      color: scheme.cardBorderColor.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Text(
+                    '$score / 5',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: scheme.tertiaryTextColor,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: onTap,
-                child: const Text('Log how I feel'),
+            const SizedBox(height: 14),
+            FilledButton.tonal(
+              onPressed: onTap,
+              style: FilledButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                minimumSize: const Size(0, 40),
+                textStyle: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
+              child: const Text('Log how I feel'),
             ),
           ],
         ),

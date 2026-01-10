@@ -80,9 +80,9 @@ class AppBackdrop extends StatelessWidget {
     final colors = isDark ? palette.darkGradient : palette.lightGradient;
     final scheme = Theme.of(context).colorScheme;
     final backgroundColors = [
-      scheme.background,
+      scheme.surface,
       ...colors,
-      scheme.background,
+      scheme.surface,
     ];
     return Container(
       decoration: BoxDecoration(

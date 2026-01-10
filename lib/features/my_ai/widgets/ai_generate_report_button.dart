@@ -118,23 +118,23 @@ class _AiGenerateReportButtonState extends State<AiGenerateReportButton> {
 
         final theme = Theme.of(context);
         final buttonStyle = ButtonStyle(
-          backgroundColor: MaterialStateProperty.resolveWith<Color?>(
+          backgroundColor: WidgetStateProperty.resolveWith<Color?>(
             (states) {
-              if (states.contains(MaterialState.disabled)) {
+              if (states.contains(WidgetState.disabled)) {
                 return theme.colorScheme.onSurface.withOpacity(0.08);
               }
               return theme.colorScheme.primary.withOpacity(0.18);
             },
           ),
           foregroundColor:
-              MaterialStateProperty.all(theme.colorScheme.onSurface),
-          shape: MaterialStateProperty.all(
+              WidgetStateProperty.all(theme.colorScheme.onSurface),
+          shape: WidgetStateProperty.all(
             RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppThemeTokens.smallRadius),
             ),
           ),
-          elevation: MaterialStateProperty.all(0),
-          padding: MaterialStateProperty.all(
+          elevation: WidgetStateProperty.all(0),
+          padding: WidgetStateProperty.all(
             const EdgeInsets.symmetric(vertical: 14),
           ),
         );

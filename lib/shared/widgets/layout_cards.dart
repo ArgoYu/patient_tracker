@@ -133,7 +133,7 @@ class SectionContainer extends StatelessWidget {
         children: [
           if (header != null) ...[
             header!,
-            SizedBox(height: AppThemeTokens.gap),
+            const SizedBox(height: AppThemeTokens.gap),
           ],
           child,
         ],

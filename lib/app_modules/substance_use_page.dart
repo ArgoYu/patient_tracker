@@ -3031,9 +3031,7 @@ class _SubstanceFeatureTile extends StatelessWidget {
   const _SubstanceFeatureTile({
     required this.icon,
     required this.title,
-    required this.subtitle,
-    this.accentColor,
-    this.actions,
+    required this.subtitle, this.accentColor, this.actions,
   });
 
   final IconData icon;

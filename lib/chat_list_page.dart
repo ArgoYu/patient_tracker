@@ -17,7 +17,7 @@ class ChatListPage extends StatelessWidget {
         elevation: 0,
       ),
       body: ListView(
-        padding: EdgeInsets.fromLTRB(
+        padding: const EdgeInsets.fromLTRB(
           AppThemeTokens.pagePadding,
           AppThemeTokens.pagePadding,
           AppThemeTokens.pagePadding,
@@ -25,7 +25,7 @@ class ChatListPage extends StatelessWidget {
         ),
         children: [
           _buildSearchBar(context),
-          SizedBox(height: AppThemeTokens.gap),
+          const SizedBox(height: AppThemeTokens.gap),
           SectionContainer(
             header: _sectionHeader(
               context,
@@ -48,7 +48,7 @@ class ChatListPage extends StatelessWidget {
               ],
             ),
           ),
-          SizedBox(height: AppThemeTokens.gap),
+          const SizedBox(height: AppThemeTokens.gap),
           SectionContainer(
             header: _sectionHeader(
               context,
@@ -157,7 +157,7 @@ class ChatListPage extends StatelessWidget {
         );
       },
       child: Padding(
-        padding: EdgeInsets.symmetric(
+        padding: const EdgeInsets.symmetric(
           vertical: AppThemeTokens.gap * 0.65,
         ),
         child: Row(
@@ -214,7 +214,7 @@ class ChatListPage extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: EdgeInsets.symmetric(
+        padding: const EdgeInsets.symmetric(
           vertical: AppThemeTokens.gap * 0.65,
         ),
         child: Row(

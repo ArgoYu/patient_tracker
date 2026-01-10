@@ -255,7 +255,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
         ],
       ),
       body: ListView(
-        padding: EdgeInsets.fromLTRB(
+        padding: const EdgeInsets.fromLTRB(
           AppThemeTokens.pagePadding,
           AppThemeTokens.pagePadding,
           AppThemeTokens.pagePadding,
@@ -271,7 +271,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
               primaryDoctor: widget.nextVisit.doctor,
             ),
           ),
-          SizedBox(height: AppThemeTokens.gap + 6),
+          const SizedBox(height: AppThemeTokens.gap + 6),
           _HomePanelsGrid(
             panels: widget.panelsOrder,
             buildPanel: (panel) => _buildPanel(panel),
@@ -353,7 +353,7 @@ class _PatientInfoHeaderState extends State<PatientInfoHeader>
           onTap: widget.onOpenProfile,
           child: CircleAvatar(
             radius: 40,
-            backgroundColor: colorScheme.surfaceVariant,
+            backgroundColor: colorScheme.surfaceContainerHighest,
             foregroundColor: colorScheme.onSurface,
             backgroundImage:
                 avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
@@ -362,7 +362,7 @@ class _PatientInfoHeaderState extends State<PatientInfoHeader>
                 : null,
           ),
         ),
-        SizedBox(height: AppThemeTokens.gap),
+        const SizedBox(height: AppThemeTokens.gap),
         FadeTransition(
           opacity: _opacity,
           child: SlideTransition(
@@ -380,7 +380,7 @@ class _PatientInfoHeaderState extends State<PatientInfoHeader>
                     ),
                   ),
                   if (infoLine.isNotEmpty) ...[
-                    SizedBox(height: AppThemeTokens.gap / 2),
+                    const SizedBox(height: AppThemeTokens.gap / 2),
                     Text(
                       infoLine,
                       style: text.bodySmall?.copyWith(
