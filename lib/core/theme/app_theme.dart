@@ -157,7 +157,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppThemeTokens.smallRadius),
         ),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: scheme.surfaceContainerHigh,
         elevation: 0,
         shadowColor: scheme.shadow,
