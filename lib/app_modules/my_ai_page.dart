@@ -1246,13 +1246,7 @@ class _SessionControlsEditor extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             _SettingToggle(
-              label: 'Allow clinician start',
-              value: coordinator.hasPermission,
-              onChanged: onPermissionChanged,
-            ),
-            const SizedBox(height: 12),
-            _SettingToggle(
-              label: 'Patient consent',
+              label: 'Clinician consent',
               value: coordinator.hasRecordingConsent,
               onChanged: onConsentChanged,
             ),
@@ -1261,7 +1255,7 @@ class _SessionControlsEditor extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 12),
                 child: Text(
                   needsConsent
-                      ? 'Consent must be granted before recording starts.'
+                      ? 'Doctor consent must be granted before recording starts.'
                       : 'Enable both toggles to allow recording.',
                   style: AiTextStyles.body13(context).copyWith(
                     color: theme.colorScheme.error,

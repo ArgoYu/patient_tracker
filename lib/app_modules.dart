@@ -1,4 +1,4 @@
-// lib/app_modules.dart
+﻿// lib/app_modules.dart
 library app_modules;
 
 import 'dart:async';
@@ -19,6 +19,7 @@ import 'package:pdf/pdf.dart' as pdf;
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -27,6 +28,7 @@ import 'core/theme/theme_tokens.dart';
 import 'core/routing/app_routes.dart';
 import 'core/utils/date_formats.dart';
 import 'data/models/models.dart';
+import 'data/storage/journal_repository.dart';
 import 'data/chat/care_team_member.dart';
 import 'data/chat/care_team_repository.dart';
 import 'data/chat/chat_threads.dart';
@@ -74,6 +76,7 @@ part 'app_modules/fade_dialog.dart';
 part 'app_modules/root_shell.dart';
 part 'app_modules/goals_page.dart';
 part 'app_modules/rx_suggestions_page.dart';
+part 'app_modules/journal_entries_page.dart';
 part 'app_modules/feelings_page.dart';
 part 'app_modules/trends_page.dart';
 part 'app_modules/me_page.dart';
@@ -90,3 +93,4 @@ part 'app_modules/chat_home_page.dart';
 part 'app_modules/my_ai_page.dart';
 part 'app_modules/account_settings_page.dart';
 part 'app_modules/medication_history_page.dart';
+

@@ -1,4 +1,4 @@
-part of 'package:patient_tracker/app_modules.dart';
+﻿part of 'package:patient_tracker/app_modules.dart';
 
 class RxSuggestionsPage extends StatefulWidget {
   const RxSuggestionsPage(
@@ -16,6 +16,17 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
   final Map<int, Timer> _timers = {};
   final Map<int, DateTime> _scheduledFire = {};
 
+  final JournalRepository _journalRepository = JournalRepository();
+  List<JournalEntry> _journalEntries = <JournalEntry>[];
+  late final String _journalAccountId;
+
+  @override
+  void initState() {
+    super.initState();
+    _journalAccountId = _currentAccountId();
+    _loadJournalEntries();
+  }
+
   @override
   void dispose() {
     for (final timer in _timers.values) {
@@ -23,6 +34,69 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
     }
     _timers.clear();
     super.dispose();
+  }
+
+
+  String _currentAccountId() {
+    final account = AuthService.instance.currentUserAccountListenable.value;
+    return account?.id ?? 'guest';
+  }
+
+  Future<void> _loadJournalEntries() async {
+    final entries = await _journalRepository.loadEntries(_journalAccountId);
+    if (!mounted) return;
+    setState(() {
+      _journalEntries = entries;
+    });
+  }
+
+  Future<void> _saveJournalEntries() async {
+    await _journalRepository.saveEntries(_journalAccountId, _journalEntries);
+  }
+
+  Future<void> _saveJournalEntry(JournalEntry entry) async {
+    final updated = List<JournalEntry>.from(_journalEntries);
+    final index = updated.indexWhere((item) => item.id == entry.id);
+    if (index == -1) {
+      updated.insert(0, entry);
+    } else {
+      updated[index] = entry;
+    }
+    updated.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    if (!mounted) return;
+    setState(() {
+      _journalEntries = updated;
+    });
+    await _saveJournalEntries();
+    if (!mounted) return;
+    showToast(context, 'Saved to journal ✅');
+  }
+
+  Future<void> _openJournalEntrySheet(RxMedication med) async {
+    final entry = await showJournalEntrySheet(
+      context,
+      medication: med,
+    );
+    if (entry == null) return;
+    await _saveJournalEntry(entry);
+  }
+
+  Future<void> _openJournalHistory(RxMedication med) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => JournalEntriesPage(
+          medication: med,
+          entries: _journalEntries,
+          onEntriesChanged: (entries) async {
+            _journalEntries = List<JournalEntry>.from(entries)
+              ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+            await _saveJournalEntries();
+            if (!mounted) return;
+            setState(() {});
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> _checkIn(int index) async {
@@ -282,6 +356,26 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _openJournalEntrySheet(med),
+                    icon: const Icon(Icons.edit_note),
+                    label: const Text('Journal'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: BorderSide(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.2),
+                      ),
+                      foregroundColor:
+                          Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                ),
                 if (reminder != null) ...[
                   const SizedBox(height: 6),
                   Text(
@@ -371,7 +465,51 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
                         ),
                       ),
                       Text(
-                        'View history →',
+                        'View history',
+                        style:
+                            Theme.of(context).textTheme.labelLarge?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant
+                                      .withValues(alpha: 0.9),
+                                ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                TextButton(
+                  onPressed: () => _openJournalHistory(med),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    foregroundColor:
+                        Theme.of(context).colorScheme.onSurfaceVariant,
+                    minimumSize: const Size(0, 36),
+                    alignment: Alignment.centerLeft,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.menu_book_outlined,
+                          size: 18,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant
+                              .withValues(alpha: 0.75)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Journal',
+                          style:
+                              Theme.of(context).textTheme.labelLarge?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant
+                                        .withValues(alpha: 0.9),
+                                  ),
+                        ),
+                      ),
+                      Text(
+                        'View journal',
                         style:
                             Theme.of(context).textTheme.labelLarge?.copyWith(
                                   color: Theme.of(context)
@@ -391,3 +529,4 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
     );
   }
 }
+
