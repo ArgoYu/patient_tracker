@@ -37,6 +37,7 @@ class SubstanceUseDisorderPage extends StatefulWidget {
 
 class _SubstanceUseDisorderPageState extends State<SubstanceUseDisorderPage> {
   late List<CopingPlan> _plans;
+  final GlobalKey _emergencyAssistKey = GlobalKey();
 
   static PatientProfile _fallbackProfile() => PatientProfile(
         name: 'Argo (Demo)',
@@ -151,6 +152,33 @@ class _SubstanceUseDisorderPageState extends State<SubstanceUseDisorderPage> {
           initialConversation: initialConversation,
         ),
       ),
+    );
+  }
+
+  void _openEmergencyAssistPage(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => EmergencyAssistPage(
+          profile: widget.profile ?? _fallbackProfile(),
+          medications: widget.medications ?? _fallbackMedications(),
+          vitals: widget.vitals ?? _fallbackVitals(),
+          nextVisit: widget.nextVisit ?? _fallbackNextVisit(),
+          safetyPlan: widget.safetyPlan ?? SafetyPlanData.defaults(),
+          carePlan: widget.carePlan ?? _fallbackCarePlan(),
+          labs: widget.labs ?? _fallbackLabs(),
+        ),
+      ),
+    );
+  }
+
+  void _scrollToEmergencyAssist() {
+    final targetContext = _emergencyAssistKey.currentContext;
+    if (targetContext == null) return;
+    Scrollable.ensureVisible(
+      targetContext,
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeOutCubic,
+      alignment: 0.12,
     );
   }
 
@@ -454,33 +482,25 @@ class _SubstanceUseDisorderPageState extends State<SubstanceUseDisorderPage> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    final patientProfile = widget.profile ?? _fallbackProfile();
-    final patientMeds = widget.medications ?? _fallbackMedications();
-    final patientVitals = widget.vitals ?? _fallbackVitals();
-    final upcomingVisit = widget.nextVisit ?? _fallbackNextVisit();
-    final activeSafetyPlan = widget.safetyPlan ?? SafetyPlanData.defaults();
-    final activeCarePlan = widget.carePlan ?? _fallbackCarePlan();
-    final recentLabs = widget.labs ?? _fallbackLabs();
-
     final quickActions = [
       {
         'icon': Icons.help_outline,
-        'label': 'Ask a question',
+        'label': 'Ask for guidance',
         'onTap': () => _openAskQuestionPage(context),
       },
       {
         'icon': Icons.playlist_add,
-        'label': 'Add condition',
+        'label': 'Add a trigger',
         'onTap': () => _openAddConditionPage(context),
       },
       {
         'icon': Icons.note_add_outlined,
-        'label': 'Log craving',
+        'label': 'Log a craving',
         'onTap': () => _openCravingLogPage(context),
       },
       {
         'icon': Icons.self_improvement_outlined,
-        'label': 'Coping skills',
+        'label': 'Use a coping skill',
         'onTap': () => _showCopingSkillsSheet(context),
       },
     ];
@@ -498,25 +518,11 @@ class _SubstanceUseDisorderPageState extends State<SubstanceUseDisorderPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _EmergencyAssistPanel(
-                  onEmergencyConfirmed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => EmergencyAssistPage(
-                        profile: patientProfile,
-                        medications: patientMeds,
-                        vitals: patientVitals,
-                        nextVisit: upcomingVisit,
-                        safetyPlan: activeSafetyPlan,
-                        carePlan: activeCarePlan,
-                        labs: recentLabs,
-                      ),
-                    ),
-                  ),
+                _SupportHeaderCard(
+                  onTap: _scrollToEmergencyAssist,
                 ),
                 const SizedBox(height: spacing),
-                _QuickActionsStrip(actions: quickActions),
                 if (_plans.isNotEmpty) ...[
-                  const SizedBox(height: spacing),
                   _CopingPlansBoard(
                     plans: _plans,
                     onAddPlan: () => _openCopingPlanPage(context),
@@ -525,34 +531,52 @@ class _SubstanceUseDisorderPageState extends State<SubstanceUseDisorderPage> {
                     onEditPlan: (plan) => _editCopingPlan(context, plan),
                   ),
                 ] else ...[
-                  const SizedBox(height: spacing),
                   Glass(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Build your coping plan',
-                            style: theme.textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w600),
+                    radius: 24,
+                    padding: const EdgeInsets.fromLTRB(22, 22, 22, 24),
+                    lightOpacity: 0.28,
+                    darkOpacity: 0.22,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'My coping plan',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'No coping plans set yet. Create one to stay ready when cravings arrive.',
-                            style: theme.textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Keep your daily supports in one place. Create a plan to guide check-ins, contacts, and safe spaces.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: cs.onSurface.withValues(alpha: 0.72),
                           ),
-                          const SizedBox(height: 12),
-                          FilledButton.icon(
-                            onPressed: () => _openCopingPlanPage(context),
-                            icon: const Icon(Icons.add),
-                            label: const Text('Create plan'),
-                          ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 16),
+                        FilledButton.icon(
+                          onPressed: () => _openCopingPlanPage(context),
+                          icon: const Icon(Icons.add),
+                          label: const Text('Create plan'),
+                        ),
+                      ],
                     ),
                   ),
                 ],
+                const SizedBox(height: spacing),
+                _QuickActionsStrip(actions: quickActions),
+                const SizedBox(height: spacing),
+                _SecondarySupportSection(
+                  onOpenInbox: () => _openCareChat(context),
+                  onOpenCircles: () => _openCareChat(
+                    context,
+                    initialConversation: ConversationType.group,
+                  ),
+                ),
+                const SizedBox(height: spacing),
+                _EmergencyAssistPanel(
+                  key: _emergencyAssistKey,
+                  onEmergencyConfirmed: () => _openEmergencyAssistPage(context),
+                ),
               ],
             ),
           );
@@ -2693,12 +2717,25 @@ class _CopingPlansBoard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
+    final cs = theme.colorScheme;
 
     return Glass(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+      radius: 24,
+      padding: const EdgeInsets.fromLTRB(22, 22, 22, 24),
+      lightOpacity: 0.28,
+      darkOpacity: 0.22,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            _statusLine(context, plans.first),
+            style: textTheme.labelSmall?.copyWith(
+              color: cs.onSurface.withValues(alpha: 0.6),
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(height: 6),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -2707,15 +2744,15 @@ class _CopingPlansBoard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'My coping plans',
-                      style: textTheme.titleMedium?.copyWith(
+                      'My coping plan',
+                      style: textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Tap a plan to launch the guided mode or edit and share details.',
-                      style: textTheme.bodySmall?.copyWith(
+                      'Launch, edit, or share your daily support plan.',
+                      style: textTheme.bodyMedium?.copyWith(
                         color:
                             theme.colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
@@ -2751,6 +2788,17 @@ class _CopingPlansBoard extends StatelessWidget {
       ),
     );
   }
+
+  String _statusLine(BuildContext context, CopingPlan plan) {
+    if (plan.checkInTime != null) {
+      final timeOfDay = MaterialLocalizations.of(context).formatTimeOfDay(
+        plan.checkInTime!,
+        alwaysUse24HourFormat: false,
+      );
+      return 'Scheduled for $timeOfDay';
+    }
+    return 'Active today';
+  }
 }
 
 class _CopingPlanTile extends StatelessWidget {
@@ -2770,6 +2818,7 @@ class _CopingPlanTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
+    final cs = theme.colorScheme;
     final timeOfDay = plan.checkInTime == null
         ? null
         : MaterialLocalizations.of(context).formatTimeOfDay(
@@ -2928,20 +2977,24 @@ class _CopingPlanTile extends StatelessWidget {
             FilledButton(
               onPressed: () => onLaunch(),
               style: FilledButton.styleFrom(
-                minimumSize: const Size(0, 44),
+                minimumSize: const Size(0, 46),
               ),
               child: const Text('Launch'),
             ),
             const SizedBox(width: 12),
-            OutlinedButton.icon(
+            TextButton.icon(
               onPressed: () => onEdit(),
               icon: const Icon(Icons.edit_outlined),
+              style: TextButton.styleFrom(
+                foregroundColor: cs.onSurface.withValues(alpha: 0.65),
+              ),
               label: const Text('Edit'),
             ),
             const SizedBox(width: 12),
             IconButton(
               tooltip: 'Share or export',
               onPressed: () => onShare(),
+              color: cs.onSurface.withValues(alpha: 0.55),
               icon: const Icon(Icons.ios_share_outlined),
             ),
           ],
@@ -2969,10 +3022,9 @@ class _QuickActionsStrip extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Quick actions',
+          'Get support now',
           style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.1,
+            fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 12),
@@ -3106,41 +3158,39 @@ class _QuickActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final background = cs.surfaceVariant.withValues(alpha: 0.7);
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: Ink(
           width: width,
-          height: 68,
+          height: 62,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            gradient: LinearGradient(
-              colors: [
-                color.withValues(alpha: 0.65),
-                color.withValues(alpha: 0.3),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+            borderRadius: BorderRadius.circular(18),
+            color: background,
+            border: Border.all(
+              color: cs.onSurface.withValues(alpha: 0.08),
             ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               CircleAvatar(
-                radius: 12,
-                backgroundColor: Colors.white.withValues(alpha: 0.12),
-                child: Icon(icon, color: Colors.white, size: 15),
+                radius: 13,
+                backgroundColor: color.withValues(alpha: 0.14),
+                child: Icon(icon, color: color, size: 15),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   label,
                   style: theme.textTheme.titleSmall?.copyWith(
-                    color: Colors.white,
+                    color: cs.onSurface.withValues(alpha: 0.88),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -3155,6 +3205,7 @@ class _QuickActionButton extends StatelessWidget {
 
 class _EmergencyAssistPanel extends StatefulWidget {
   const _EmergencyAssistPanel({
+    super.key,
     required this.onEmergencyConfirmed,
   });
 
@@ -3337,31 +3388,20 @@ class _EmergencyAssistPanelState extends State<_EmergencyAssistPanel>
         (_holdDuration.inSeconds * (1 - _holdController.value)).ceil();
 
     final statusText = _triggered
-        ? 'Emergency activated'
+        ? 'Opening emergency assist'
         : _isHolding
-            ? 'Keep holding for ${remainingSeconds}s to trigger assistance'
-            : 'Slide and hold for 5 seconds to enter emergency assist';
+            ? 'Keep holding to open emergency assist (${remainingSeconds}s)'
+            : 'Slide and hold for 5 seconds to open emergency assist';
 
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          colors: [
-            cs.error.withValues(alpha: 0.92),
-            cs.error.withValues(alpha: 0.78),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+        borderRadius: BorderRadius.circular(22),
+        color: cs.surfaceVariant.withValues(alpha: 0.6),
+        border: Border.all(
+          color: cs.onSurface.withValues(alpha: 0.06),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: cs.error.withValues(alpha: 0.24),
-            offset: const Offset(0, 18),
-            blurRadius: 28,
-          ),
-        ],
       ),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -3369,14 +3409,14 @@ class _EmergencyAssistPanelState extends State<_EmergencyAssistPanel>
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: cs.onError.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(16),
+                  color: cs.surface.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 child: Icon(
-                  Icons.emergency,
-                  color: cs.onError,
-                  size: 28,
+                  Icons.warning_amber_rounded,
+                  color: cs.onSurface.withValues(alpha: 0.7),
+                  size: 22,
                 ),
               ),
               const SizedBox(width: 16),
@@ -3384,26 +3424,7 @@ class _EmergencyAssistPanelState extends State<_EmergencyAssistPanel>
                 child: Text(
                   'Emergency assist',
                   style: theme.textTheme.titleLarge?.copyWith(
-                    color: cs.onError,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Icon(
-                Icons.swipe_right_alt,
-                color: cs.onError,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  statusText,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: cs.onError,
+                    color: cs.onSurface,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -3411,24 +3432,53 @@ class _EmergencyAssistPanelState extends State<_EmergencyAssistPanel>
             ],
           ),
           const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(
+                Icons.swipe_right_alt,
+                color: cs.onSurface.withValues(alpha: 0.5),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  statusText,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: cs.onSurface.withValues(alpha: 0.72),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
           ClipRRect(
             borderRadius: BorderRadius.circular(28),
             child: Container(
               decoration: BoxDecoration(
-                color: cs.onError.withValues(alpha: 0.12),
+                color: cs.surface.withValues(alpha: 0.95),
+                border: Border.all(
+                  color: cs.onSurface.withValues(alpha: 0.08),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: cs.shadow.withValues(alpha: 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              height: 58,
+              height: 56,
               child: SliderTheme(
                 data: SliderTheme.of(context).copyWith(
-                  trackHeight: 58,
+                  trackHeight: 56,
                   thumbShape: const RoundSliderThumbShape(
-                    enabledThumbRadius: 24,
+                    enabledThumbRadius: 22,
                     pressedElevation: 6,
                   ),
                   overlayShape: const RoundSliderOverlayShape(overlayRadius: 0),
                   inactiveTrackColor: Colors.transparent,
-                  activeTrackColor: cs.onError.withValues(alpha: 0.2),
-                  thumbColor: cs.onError,
+                  activeTrackColor: cs.primary.withValues(alpha: 0.18),
+                  thumbColor: cs.primary.withValues(alpha: 0.85),
                 ),
                 child: Slider(
                   value: _sliderValue,
@@ -3443,5 +3493,213 @@ class _EmergencyAssistPanelState extends State<_EmergencyAssistPanel>
         ],
       ),
     );
+  }
+}
+
+class _SupportHeaderCard extends StatelessWidget {
+  const _SupportHeaderCard({
+    required this.onTap,
+  });
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: onTap,
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            color: cs.surfaceVariant.withValues(alpha: 0.45),
+            border: Border.all(
+              color: cs.onSurface.withValues(alpha: 0.04),
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: cs.surface.withValues(alpha: 0.8),
+                child: Icon(
+                  Icons.support_agent_outlined,
+                  color: cs.onSurface.withValues(alpha: 0.7),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Support is always available',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Emergency assist is ready whenever you need a safe check-in.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              TextButton.icon(
+                onPressed: onTap,
+                style: TextButton.styleFrom(
+                  foregroundColor: cs.onSurface.withValues(alpha: 0.6),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  textStyle: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                icon: const Icon(Icons.chevron_right, size: 18),
+                label: const Text('Emergency assist'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SecondarySupportSection extends StatelessWidget {
+  const _SecondarySupportSection({
+    required this.onOpenInbox,
+    required this.onOpenCircles,
+  });
+
+  final VoidCallback onOpenInbox;
+  final VoidCallback onOpenCircles;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Secondary support',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _SecondarySupportCard(
+          icon: Icons.mark_email_unread_outlined,
+          title: 'Care team inbox',
+          subtitle: 'Send updates or questions to your clinical team.',
+          ctaLabel: 'Open inbox',
+          onTap: onOpenInbox,
+        ),
+        const SizedBox(height: 12),
+        _SecondarySupportCard(
+          icon: Icons.groups_outlined,
+          title: 'Community support circles',
+          subtitle: 'Connect with peers and stay accountable together.',
+          ctaLabel: 'View circles',
+          onTap: onOpenCircles,
+        ),
+      ],
+    );
+  }
+}
+
+class _SecondarySupportCard extends StatelessWidget {
+  const _SecondarySupportCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.ctaLabel,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String ctaLabel;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Glass(
+      radius: 20,
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      lightOpacity: 0.14,
+      darkOpacity: 0.14,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: cs.surfaceVariant.withValues(alpha: 0.7),
+            child: Icon(icon, color: cs.primary, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: cs.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  onPressed: onTap,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 32),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    foregroundColor: cs.onSurface.withValues(alpha: 0.65),
+                    side: BorderSide(
+                      color: cs.onSurface.withValues(alpha: 0.12),
+                    ),
+                  ),
+                  child: Text(ctaLabel),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _statusLine(BuildContext context, CopingPlan plan) {
+    if (plan.checkInTime != null) {
+      final timeOfDay = MaterialLocalizations.of(context).formatTimeOfDay(
+        plan.checkInTime!,
+        alwaysUse24HourFormat: false,
+      );
+      return 'Scheduled for $timeOfDay';
+    }
+    return 'Active today';
   }
 }
