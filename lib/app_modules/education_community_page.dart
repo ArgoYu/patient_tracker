@@ -443,8 +443,8 @@ class MessagesPage extends StatefulWidget {
 
 class _MessagesPageState extends State<MessagesPage> {
   bool _personalExpanded = true;
-  bool _groupExpanded = true;
-  bool _careExpanded = true;
+  bool _groupExpanded = false;
+  bool _careExpanded = false;
   List<PersonalChatContact> _personalChats = [];
   final ScrollController _scrollController = ScrollController();
   final Map<ConversationType, GlobalKey> _careContactKeys = {};
@@ -604,11 +604,11 @@ class _MessagesPageState extends State<MessagesPage> {
       return key == uniqueKey;
     });
     if (alreadyExists) {
-      showToast(context, '${contact.name} is already in your chats.');
+      showToast(context, '${contact.name} is already in your conversations.');
       return;
     }
     setState(() => _personalChats.insert(0, contact));
-    showToast(context, '${contact.name} added to personal chats.');
+    showToast(context, '${contact.name} added to conversations.');
     if (!_isDemoAccount) {
       final saved = _savedForContact(contact);
       final updated = _persistedThreads.copyWith(
@@ -1072,6 +1072,74 @@ class _MessagesPageState extends State<MessagesPage> {
     );
   }
 
+  CareTeamMember? _firstCareTeamMember(ConversationType type) {
+    for (final member in _careTeamMembers) {
+      if (member.type == type) {
+        return member;
+      }
+    }
+    return null;
+  }
+
+  Widget _buildPrimarySupportTile(
+    bool isDark,
+    ConversationType type, {
+    required String fallbackName,
+    required String fallbackRole,
+  }) {
+    final member = _firstCareTeamMember(type);
+    final name =
+        (member?.name.trim().isNotEmpty ?? false) ? member!.name : fallbackName;
+    final role =
+        (member?.role.trim().isNotEmpty ?? false) ? member!.role : fallbackRole;
+    final contactColor = _careTeamAccentColor(type);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: ChatTile(
+        size: ChatTileSize.emphasis,
+        icon: _careTeamIcon(type),
+        iconBackgroundColor:
+            contactColor.withValues(alpha: isDark ? 0.24 : 0.16),
+        iconColor: contactColor,
+        title: name,
+        subtitle: role,
+        onTap: () => _openCareTeamChat(context, type),
+      ),
+    );
+  }
+
+  Widget _buildPrimarySupportSection(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionLabel('Your support'),
+        Card(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              children: [
+                _buildPrimarySupportTile(
+                  isDark,
+                  ConversationType.coach,
+                  fallbackName: 'My Personal Care AI',
+                  fallbackRole: 'Care coach',
+                ),
+                _buildPrimarySupportTile(
+                  isDark,
+                  ConversationType.physician,
+                  fallbackName: 'Primary clinician',
+                  fallbackRole: 'Psychiatry',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildPersonalChatsSection(ThemeData theme) {
     final hasPersonal = _personalChats.isNotEmpty;
     return Card(
@@ -1083,14 +1151,14 @@ class _MessagesPageState extends State<MessagesPage> {
           onExpansionChanged: (value) =>
               setState(() => _personalExpanded = value),
           leading: Icon(Icons.person_outline, color: theme.colorScheme.primary),
-          title: const Text('Personal chats'),
-          subtitle: Text('${_personalChats.length} conversations'),
+          title: const Text('Conversations'),
+          subtitle: const Text('1-on-1 support and reflections'),
           children: hasPersonal
               ? [
                   for (final chat in _personalChats)
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
+                          horizontal: 16, vertical: 6),
                       child: ChatTile(
                         icon: chat.icon,
                         iconBackgroundColor: chat.color.withValues(alpha: 0.18),
@@ -1107,7 +1175,7 @@ class _MessagesPageState extends State<MessagesPage> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                     child: Text(
-                      'You don’t have any personal chats yet.\nTap + to start one.',
+                      'You don’t have any conversations yet.\nTap + to start one.',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyMedium,
                     ),
@@ -1158,7 +1226,7 @@ class _MessagesPageState extends State<MessagesPage> {
           leading:
               Icon(Icons.groups_outlined, color: theme.colorScheme.primary),
           title: const Text('Group chats'),
-          subtitle: Text('${groupChats.length} active groups'),
+          subtitle: const Text('Optional community spaces'),
           children: groupChats.isNotEmpty
               ? [
                   for (final group in groupChats)
@@ -1210,7 +1278,7 @@ class _MessagesPageState extends State<MessagesPage> {
         isHighlighted ? const EdgeInsets.all(2) : EdgeInsets.zero;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: AnimatedContainer(
         key: key,
         duration: const Duration(milliseconds: 320),
@@ -1286,7 +1354,7 @@ class _MessagesPageState extends State<MessagesPage> {
 
     final contactColor = _careTeamAccentColor(member.type);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: AnimatedContainer(
         key: key,
         duration: const Duration(milliseconds: 320),
@@ -1354,7 +1422,7 @@ class _MessagesPageState extends State<MessagesPage> {
           leading: Icon(Icons.medical_services_outlined,
               color: theme.colorScheme.primary),
           title: const Text('Care team'),
-          subtitle: Text('${_careTeamMembers.length} members'),
+          subtitle: const Text('Professional support network'),
           children: [
             for (final member in _careTeamMembers)
               _buildCareTeamTile(context, theme, isDark, member),
@@ -1505,7 +1573,9 @@ class _MessagesPageState extends State<MessagesPage> {
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
+          _buildPrimarySupportSection(isDark),
+          const SizedBox(height: 16),
           _buildPersonalChatsSection(theme),
           const SizedBox(height: 16),
           _buildGroupChatsSection(theme),
@@ -2970,12 +3040,15 @@ class _MyQrSheet extends StatelessWidget {
   }
 }
 
+enum ChatTileSize { standard, emphasis }
+
 class ChatTile extends StatelessWidget {
   const ChatTile({
     super.key,
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.size = ChatTileSize.standard,
     this.trailingInfo,
     this.onTap,
     this.iconBackgroundColor,
@@ -2987,6 +3060,7 @@ class ChatTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
+  final ChatTileSize size;
   final String? trailingInfo;
   final VoidCallback? onTap;
   final Color? iconBackgroundColor;
@@ -3006,7 +3080,14 @@ class ChatTile extends StatelessWidget {
             offset: const Offset(0, 6),
           ),
         ];
-    final subtitleColor = theme.colorScheme.onSurface.withValues(alpha: 0.65);
+    final subtitleColor = theme.colorScheme.onSurfaceVariant;
+    final isEmphasis = size == ChatTileSize.emphasis;
+    final minHeight = isEmphasis ? 84.0 : 68.0;
+    final verticalPadding = isEmphasis ? 14.0 : 10.0;
+    final avatarRadius = isEmphasis ? 20.0 : 18.0;
+    final iconSize = isEmphasis ? 22.0 : 20.0;
+    final titleSize = isEmphasis ? 16.0 : 15.0;
+    final subtitleSize = isEmphasis ? 14.0 : 13.0;
 
     return Material(
       color: Colors.transparent,
@@ -3015,8 +3096,9 @@ class ChatTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 72),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          constraints: BoxConstraints(minHeight: minHeight),
+          padding:
+              EdgeInsets.symmetric(horizontal: 18, vertical: verticalPadding),
           decoration: BoxDecoration(
             color: surfaceColor,
             borderRadius: BorderRadius.circular(16),
@@ -3026,12 +3108,12 @@ class ChatTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               CircleAvatar(
-                radius: 20,
+                radius: avatarRadius,
                 backgroundColor: iconBackgroundColor ??
                     theme.colorScheme.primary.withValues(alpha: 0.16),
                 child: Icon(
                   icon,
-                  size: 22,
+                  size: iconSize,
                   color: iconColor ?? theme.colorScheme.primary,
                 ),
               ),
@@ -3046,7 +3128,7 @@ class ChatTile extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodyLarge?.copyWith(
-                        fontSize: 16,
+                        fontSize: titleSize,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -3056,7 +3138,7 @@ class ChatTile extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        fontSize: 14,
+                        fontSize: subtitleSize,
                         color: subtitleColor,
                       ),
                     ),
@@ -3070,12 +3152,15 @@ class ChatTile extends StatelessWidget {
                     trailingInfo!,
                     style: theme.textTheme.labelSmall?.copyWith(
                       fontSize: 12,
-                      color:
-                          theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
-              const Icon(Icons.chevron_right, size: 24),
+              Icon(
+                Icons.chevron_right,
+                size: 24,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ],
           ),
         ),
