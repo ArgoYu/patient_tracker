@@ -575,7 +575,7 @@ class _CareTeamMessagesPageState extends State<CareTeamMessagesPage> {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         if (!isUser)
-          Padding(
+            Padding(
             padding: const EdgeInsets.only(right: 8),
             child: CircleAvatar(
               radius: 16,
@@ -689,91 +689,97 @@ class _CareTeamMessagesPageState extends State<CareTeamMessagesPage> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              decoration: BoxDecoration(
-                gradient: highlightActive
-                    ? LinearGradient(
-                        colors: [
-                          highlightColor.withValues(alpha: 0.28),
-                          highlightColor.withValues(alpha: 0.1),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                color: highlightActive ? null : Colors.transparent,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: highlightActive
-                      ? highlightColor.withValues(alpha: 0.6)
-                      : Colors.transparent,
-                  width: 1.4,
-                ),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor:
-                        activeContact.color.withValues(alpha: 0.12),
-                    child: Icon(activeContact.icon, color: activeContact.color),
+      body: SafeArea(
+        top: false,
+        bottom: true,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                decoration: BoxDecoration(
+                  gradient: highlightActive
+                      ? LinearGradient(
+                          colors: [
+                            highlightColor.withValues(alpha: 0.28),
+                            highlightColor.withValues(alpha: 0.1),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
+                  color: highlightActive ? null : Colors.transparent,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: highlightActive
+                        ? highlightColor.withValues(alpha: 0.6)
+                        : Colors.transparent,
+                    width: 1.4,
                   ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        activeContact.name,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                      Text(activeContact.role,
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor:
+                          activeContact.color.withValues(alpha: 0.12),
+                      child:
+                          Icon(activeContact.icon, color: activeContact.color),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          activeContact.name,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        Text(
+                          activeContact.role,
                           style:
                               Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: Theme.of(context)
                                         .colorScheme
                                         .onSurface
                                         .withValues(alpha: 0.65),
-                                  )),
-                    ],
-                  ),
-                ],
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                final msg = messages[index];
-                final lastUserIndex = messages.lastIndexWhere((m) => m.isUser);
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: _buildMessageBubble(
-                    msg,
-                    _readReceiptsEnabled &&
-                        index == lastUserIndex &&
-                        msg.isUser,
-                  ),
-                );
-              },
+            Expanded(
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                itemCount: messages.length,
+                itemBuilder: (context, index) {
+                  final msg = messages[index];
+                  final lastUserIndex = messages.lastIndexWhere((m) => m.isUser);
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: _buildMessageBubble(
+                      msg,
+                      _readReceiptsEnabled &&
+                          index == lastUserIndex &&
+                          msg.isUser,
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Row(
-              children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Row(
+                children: [
                 IconButton(
                   tooltip: 'Camera / gallery',
                   onPressed: () =>
@@ -784,7 +790,7 @@ class _CareTeamMessagesPageState extends State<CareTeamMessagesPage> {
                   child: TextField(
                     controller: _composer,
                     decoration: const InputDecoration(
-                      hintText: 'Type a message…',
+                      hintText: 'Type a message',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.all(Radius.circular(20)),
                       ),
@@ -812,11 +818,12 @@ class _CareTeamMessagesPageState extends State<CareTeamMessagesPage> {
                   child: const Icon(Icons.send_rounded, size: 20),
                 ),
               ],
+              ),
             ),
-          ),
         ],
       ),
-    );
+    ),
+  );
   }
 }
 
