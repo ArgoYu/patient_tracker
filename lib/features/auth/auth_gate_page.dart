@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/routing/app_routes.dart';
+import '../../core/theme/theme_tokens.dart';
 import '../../shared/prefs_keys.dart';
 import '../onboarding/global_onboarding_screen.dart';
 import 'demo_credentials.dart';
@@ -35,8 +36,20 @@ class _AuthGatePageState extends State<AuthGatePage> {
   int _secondsLeft = 0;
   String? _error;
   Timer? _timer;
+  bool _pageVisible = false;
+
   /// Controls whether the secure token/refresh info is persisted for future runs.
   bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() => _pageVisible = true);
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -82,6 +95,143 @@ class _AuthGatePageState extends State<AuthGatePage> {
         }
       }
     });
+  }
+
+  InputDecoration _inputDecoration({
+    required ColorScheme colorScheme,
+    required String label,
+    required IconData icon,
+    String? helperText,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      helperText: helperText,
+      helperMaxLines: 2,
+      prefixIcon: Icon(
+        icon,
+        size: 18,
+        color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+      ),
+      prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+      contentPadding: const EdgeInsets.symmetric(vertical: 14),
+      border: UnderlineInputBorder(
+        borderSide: BorderSide(color: colorScheme.outlineVariant),
+      ),
+      enabledBorder: UnderlineInputBorder(
+        borderSide: BorderSide(color: colorScheme.outlineVariant),
+      ),
+      focusedBorder: UnderlineInputBorder(
+        borderSide: BorderSide(color: colorScheme.primary, width: 2),
+      ),
+    );
+  }
+
+  Widget _buildSegmentedControl(ThemeData theme, ColorScheme colorScheme) {
+    final radius = BorderRadius.circular(AppThemeTokens.smallRadius);
+    return ClipRRect(
+      borderRadius: radius,
+      child: Container(
+        height: 40,
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          border: Border.all(
+            color: colorScheme.outlineVariant.withOpacity(0.6),
+          ),
+        ),
+        child: Stack(
+          children: [
+            AnimatedAlign(
+              alignment:
+                  _isLogin ? Alignment.centerLeft : Alignment.centerRight,
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
+              child: FractionallySizedBox(
+                widthFactor: 0.5,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withOpacity(0.12),
+                    borderRadius: radius,
+                  ),
+                ),
+              ),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: _busy ? null : () => _switchMode(true),
+                    style: TextButton.styleFrom(
+                      foregroundColor: _isLogin
+                          ? colorScheme.onSurface
+                          : colorScheme.onSurfaceVariant.withOpacity(0.8),
+                      textStyle: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: radius),
+                    ),
+                    child: const Text('Log in'),
+                  ),
+                ),
+                Expanded(
+                  child: TextButton(
+                    onPressed: _busy ? null : () => _switchMode(false),
+                    style: TextButton.styleFrom(
+                      foregroundColor: !_isLogin
+                          ? colorScheme.onSurface
+                          : colorScheme.onSurfaceVariant.withOpacity(0.8),
+                      textStyle: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: radius),
+                    ),
+                    child: const Text('Create account'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomActions(ThemeData theme, ColorScheme colorScheme) {
+    final mutedBlue = colorScheme.primary.withOpacity(0.65);
+    final secondaryStyle = TextButton.styleFrom(
+      foregroundColor: mutedBlue,
+      textStyle: theme.textTheme.bodySmall?.copyWith(
+        fontWeight: FontWeight.w500,
+      ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (kDebugMode && _isLogin)
+          TextButton(
+            onPressed: _busy ? null : _useDemoCredentials,
+            style: secondaryStyle,
+            child: const Text('Use demo account'),
+          ),
+        TextButton(
+          onPressed: _busy ? null : () => _switchMode(!_isLogin),
+          style: secondaryStyle,
+          child: Text(
+            _isLogin
+                ? 'Need an account? Create one'
+                : 'Already registered? Log in',
+          ),
+        ),
+        Text(
+          'After signing in, you will move directly into the main app.',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurfaceVariant.withOpacity(0.8),
+          ),
+        ),
+      ],
+    );
   }
 
   Future<void> _handleSendCode() async {
@@ -290,222 +440,306 @@ class _AuthGatePageState extends State<AuthGatePage> {
     );
   }
 
-  
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final title = _isLogin ? 'Welcome back' : 'Create your account';
     final subtitle = _isLogin
-        ? 'Log in to sync your chats, Echo AI, and care plan.'
-        : 'Sign up to unlock the main app experience.';
+        ? 'Securely access your care plan, Echo AI, and health history.'
+        : 'A secure space to track your health, mood, and care journey.';
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Patient Tracker',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      letterSpacing: 1.2,
-                      color: colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(title, style: theme.textTheme.headlineMedium),
-                  const SizedBox(height: 8),
-                  Text(
-                    subtitle,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: colorScheme.onSurface.withOpacity(0.7),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Wrap(
-                    spacing: 12,
-                    children: [
-                      ChoiceChip(
-                        label: const Text('Log in'),
-                        selected: _isLogin,
-                        onSelected: (_) => _switchMode(true),
-                      ),
-                      ChoiceChip(
-                        label: const Text('Create account'),
-                        selected: !_isLogin,
-                        onSelected: (_) => _switchMode(false),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Card(
-                    elevation: 0,
-                    color: colorScheme.surface.withOpacity(0.9),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          TextField(
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            autofillHints: const [AutofillHints.email],
-                            decoration: const InputDecoration(
-                              labelText: 'Email',
-                              prefixIcon: Icon(Icons.email_outlined),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          TextField(
-                            controller: _passwordController,
-                            obscureText: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Password',
-                              prefixIcon: Icon(Icons.lock_outline),
-                            ),
-                          ),
-                          if (!_isLogin) ...[
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _confirmController,
-                              obscureText: true,
-                              decoration: const InputDecoration(
-                                labelText: 'Confirm password',
-                                prefixIcon: Icon(Icons.lock_reset_outlined),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 28,
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight,
+                ),
+                child: AnimatedOpacity(
+                  opacity: _pageVisible ? 1 : 0,
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOut,
+                  child: AnimatedSlide(
+                    offset: _pageVisible ? Offset.zero : const Offset(0, 0.02),
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 520),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _codeController,
-                                    keyboardType: TextInputType.number,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Verification code',
-                                      prefixIcon: Icon(Icons.verified_outlined),
-                                    ),
+                                Text(
+                                  'Patient Tracker',
+                                  style: theme.textTheme.labelLarge?.copyWith(
+                                    letterSpacing: 1.4,
+                                    color:
+                                        colorScheme.onSurface.withOpacity(0.6),
                                   ),
                                 ),
-                                const SizedBox(width: 12),
-                                SizedBox(
-                                  width: 170,
-                                  child: ElevatedButton(
-                                    onPressed: (_busy ||
-                                            _sendingCode ||
-                                            _secondsLeft > 0)
-                                        ? null
-                                        : _handleSendCode,
-                                    child: _sendingCode
-                                        ? const SizedBox(
-                                            height: 18,
-                                            width: 18,
-                                            child: CircularProgressIndicator(
-                                                strokeWidth: 2),
-                                          )
-                                        : Text(
-                                            _secondsLeft > 0
-                                                ? 'Resend in ${_secondsLeft}s'
-                                                : _codeSent
-                                                    ? 'Resend code'
-                                                    : 'Send verification code',
+                                const SizedBox(height: 10),
+                                Text(
+                                  title,
+                                  style:
+                                      theme.textTheme.headlineLarge?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.1,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  subtitle,
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    color:
+                                        colorScheme.onSurface.withOpacity(0.72),
+                                    height: 1.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 28),
+                                _buildSegmentedControl(theme, colorScheme),
+                                const SizedBox(height: 20),
+                                Card(
+                                  elevation: 2,
+                                  shadowColor:
+                                      colorScheme.shadow.withOpacity(0.18),
+                                  color: colorScheme.surfaceContainerLow
+                                      .withOpacity(0.9),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppThemeTokens.cardRadius + 4,
+                                    ),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(24),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        TextField(
+                                          controller: _emailController,
+                                          keyboardType:
+                                              TextInputType.emailAddress,
+                                          autofillHints: const [
+                                            AutofillHints.email
+                                          ],
+                                          decoration: _inputDecoration(
+                                            colorScheme: colorScheme,
+                                            label: 'Email',
+                                            icon: Icons.email_outlined,
                                           ),
+                                        ),
+                                        const SizedBox(height: 22),
+                                        TextField(
+                                          controller: _passwordController,
+                                          obscureText: true,
+                                          decoration: _inputDecoration(
+                                            colorScheme: colorScheme,
+                                            label: 'Password',
+                                            icon: Icons.lock_outline,
+                                          ),
+                                        ),
+                                        if (!_isLogin) ...[
+                                          const SizedBox(height: 22),
+                                          TextField(
+                                            controller: _confirmController,
+                                            obscureText: true,
+                                            decoration: _inputDecoration(
+                                              colorScheme: colorScheme,
+                                              label: 'Confirm password',
+                                              icon: Icons.lock_reset_outlined,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 22),
+                                          Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Expanded(
+                                                child: TextField(
+                                                  controller: _codeController,
+                                                  keyboardType:
+                                                      TextInputType.number,
+                                                  decoration: _inputDecoration(
+                                                    colorScheme: colorScheme,
+                                                    label: 'Verification code',
+                                                    icon:
+                                                        Icons.verified_outlined,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              SizedBox(
+                                                width: 160,
+                                                child: AnimatedOpacity(
+                                                  opacity: (_codeSent ||
+                                                          _sendingCode ||
+                                                          _secondsLeft > 0)
+                                                      ? 0.6
+                                                      : 1,
+                                                  duration: const Duration(
+                                                      milliseconds: 160),
+                                                  curve: Curves.easeOut,
+                                                  child: OutlinedButton(
+                                                    onPressed: (_busy ||
+                                                            _sendingCode ||
+                                                            _secondsLeft > 0)
+                                                        ? null
+                                                        : _handleSendCode,
+                                                    style: OutlinedButton
+                                                        .styleFrom(
+                                                      foregroundColor:
+                                                          colorScheme.primary
+                                                              .withOpacity(
+                                                                  0.75),
+                                                      side: BorderSide(
+                                                        color: colorScheme
+                                                            .outlineVariant
+                                                            .withOpacity(0.6),
+                                                      ),
+                                                      shape:
+                                                          RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(
+                                                          AppThemeTokens
+                                                              .smallRadius,
+                                                        ),
+                                                      ),
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                        vertical: 10,
+                                                      ),
+                                                    ),
+                                                    child: _sendingCode
+                                                        ? const SizedBox(
+                                                            height: 18,
+                                                            width: 18,
+                                                            child:
+                                                                CircularProgressIndicator(
+                                                              strokeWidth: 2,
+                                                            ),
+                                                          )
+                                                        : Text(
+                                                            _secondsLeft > 0
+                                                                ? 'Resend in ${_secondsLeft}s'
+                                                                : _codeSent
+                                                                    ? 'Resend code'
+                                                                    : 'Send code',
+                                                          ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'We\'ll send a short verification code to confirm your email.',
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                              color: colorScheme.onSurface
+                                                  .withOpacity(0.7),
+                                            ),
+                                          ),
+                                        ],
+                                        if (_error != null) ...[
+                                          const SizedBox(height: 14),
+                                          Text(
+                                            _error!,
+                                            style: theme.textTheme.bodyMedium
+                                                ?.copyWith(
+                                                    color: colorScheme.error),
+                                          ),
+                                        ],
+                                        if (_isLogin) ...[
+                                          const SizedBox(height: 18),
+                                          // Remember me triggers secure storage so future launches can auto-login.
+                                          CheckboxListTile(
+                                            contentPadding: EdgeInsets.zero,
+                                            controlAffinity:
+                                                ListTileControlAffinity.leading,
+                                            value: _rememberMe,
+                                            onChanged: _busy
+                                                ? null
+                                                : (value) => setState(() {
+                                                      _rememberMe =
+                                                          value ?? false;
+                                                    }),
+                                            title: Text(
+                                              'Remember me',
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                color: colorScheme
+                                                    .onSurfaceVariant
+                                                    .withOpacity(0.8),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                        const SizedBox(height: 18),
+                                        ElevatedButton(
+                                          onPressed:
+                                              _busy ? null : _handleSubmit,
+                                          style: ElevatedButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 12,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                AppThemeTokens.smallRadius,
+                                              ),
+                                            ),
+                                            elevation: 0,
+                                            shadowColor: Colors.transparent,
+                                            disabledBackgroundColor: colorScheme
+                                                .primary
+                                                .withOpacity(0.35),
+                                            disabledForegroundColor: colorScheme
+                                                .onPrimary
+                                                .withOpacity(0.7),
+                                          ),
+                                          child: _busy
+                                              ? const SizedBox(
+                                                  height: 18,
+                                                  width: 18,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                  ),
+                                                )
+                                              : Text(_isLogin
+                                                  ? 'Log in'
+                                                  : 'Create account'),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'We have sent a 6-digit code to your email. Please enter it here to complete registration.',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color:
-                                    colorScheme.onSurface.withOpacity(0.7),
-                              ),
-                            ),
+                            const SizedBox(height: 24),
+                            _buildBottomActions(theme, colorScheme),
                           ],
-                          if (_error != null) ...[
-                            const SizedBox(height: 12),
-                            Text(
-                              _error!,
-                              style: theme.textTheme.bodyMedium
-                                  ?.copyWith(color: colorScheme.error),
-                            ),
-                          ],
-                          if (_isLogin) ...[
-                            const SizedBox(height: 12),
-                            // Remember me triggers secure storage so future launches can auto-login.
-                            CheckboxListTile(
-                              contentPadding: EdgeInsets.zero,
-                              controlAffinity: ListTileControlAffinity.leading,
-                              value: _rememberMe,
-                              onChanged: _busy
-                                  ? null
-                                  : (value) => setState(() {
-                                        _rememberMe = value ?? false;
-                                      }),
-                              title: Text(
-                                'Remember me',
-                                style: theme.textTheme.bodyMedium,
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: _busy ? null : _handleSubmit,
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                            child: _busy
-                                ? const SizedBox(
-                                    height: 18,
-                                    width: 18,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2),
-                                  )
-                                : Text(_isLogin ? 'Log in' : 'Create account'),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  if (kDebugMode && _isLogin) ...[
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: _busy ? null : _useDemoCredentials,
-                        child: const Text('Use demo account'),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  TextButton(
-                    onPressed: _busy ? null : () => _switchMode(!_isLogin),
-                    child: Text(
-                      _isLogin
-                          ? 'Need an account? Create one'
-                          : 'Already registered? Log in',
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'After signing in, you will move directly into the main app.',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
