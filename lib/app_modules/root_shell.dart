@@ -1390,6 +1390,79 @@ List<RxMedication> _buildDemoMeds() {
         DateTime.now().subtract(const Duration(days: 1, hours: 1)),
       ],
     ),
+    RxMedication(
+      name: 'Fluoxetine',
+      dose: '20 mg · morning',
+      effect: 'Supports steady mood and reduces anxious spirals.',
+      sideEffects: 'Dry mouth or light nausea early on.',
+      intakeLog: [
+        DateTime.now().subtract(const Duration(days: 3, hours: 4)),
+        DateTime.now().subtract(const Duration(days: 1, hours: 5)),
+      ],
+    ),
+    RxMedication(
+      name: 'Escitalopram',
+      dose: '10 mg · morning',
+      effect: 'Helps with low mood and daily tension.',
+      sideEffects: 'Headache or mild fatigue in the first week.',
+      intakeLog: [
+        DateTime.now().subtract(const Duration(days: 2, hours: 6)),
+      ],
+    ),
+    RxMedication(
+      name: 'Bupropion XL',
+      dose: '150 mg · morning',
+      effect: 'Boosts energy and focus during the day.',
+      sideEffects: 'Dry mouth or light jitteriness.',
+      intakeLog: [
+        DateTime.now().subtract(const Duration(days: 1, hours: 4)),
+      ],
+    ),
+    RxMedication(
+      name: 'Buspirone',
+      dose: '10 mg · noon',
+      effect: 'Takes the edge off daytime anxiety.',
+      sideEffects: 'Light dizziness or upset stomach.',
+      intakeLog: [
+        DateTime.now().subtract(const Duration(days: 2, hours: 1)),
+      ],
+    ),
+    RxMedication(
+      name: 'Lamotrigine',
+      dose: '100 mg · evening',
+      effect: 'Supports mood stability and reduces swings.',
+      sideEffects: 'Possible rash or skin sensitivity.',
+      intakeLog: [
+        DateTime.now().subtract(const Duration(days: 1, hours: 2)),
+      ],
+    ),
+    RxMedication(
+      name: 'Trazodone',
+      dose: '50 mg · bedtime',
+      effect: 'Helps with sleep onset on restless nights.',
+      sideEffects: 'Next-day grogginess or dry mouth.',
+      intakeLog: [
+        DateTime.now().subtract(const Duration(days: 1, hours: 7)),
+      ],
+    ),
+    RxMedication(
+      name: 'Hydroxyzine',
+      dose: '25 mg · bedtime / as needed',
+      effect: 'Calms acute anxiety and supports sleep when needed.',
+      sideEffects: 'Drowsiness or dry mouth.',
+      intakeLog: [
+        DateTime.now().subtract(const Duration(days: 4, hours: 2)),
+      ],
+    ),
+    RxMedication(
+      name: 'Propranolol',
+      dose: '10 mg · as needed',
+      effect: 'Reduces physical symptoms of stress during spikes.',
+      sideEffects: 'Cool hands or mild fatigue.',
+      intakeLog: [
+        DateTime.now().subtract(const Duration(days: 3, hours: 6)),
+      ],
+    ),
   ];
 }
 
