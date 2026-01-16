@@ -1,13 +1,11 @@
 ﻿// lib/data/models/journal_entry.dart
 
-enum JournalFeeling { ok, notGreat, bad }
-
 class JournalEntry {
   const JournalEntry({
     required this.id,
     required this.medicationId,
     required this.createdAt,
-    required this.feeling,
+    required this.feelingScore,
     this.tags = const <String>[],
     this.severity,
     this.notes,
@@ -16,7 +14,7 @@ class JournalEntry {
   final String id;
   final String medicationId;
   final DateTime createdAt;
-  final JournalFeeling feeling;
+  final int feelingScore;
   final List<String> tags;
   final int? severity;
   final String? notes;
@@ -25,7 +23,7 @@ class JournalEntry {
     String? id,
     String? medicationId,
     DateTime? createdAt,
-    JournalFeeling? feeling,
+    int? feelingScore,
     List<String>? tags,
     int? severity,
     String? notes,
@@ -34,7 +32,7 @@ class JournalEntry {
       id: id ?? this.id,
       medicationId: medicationId ?? this.medicationId,
       createdAt: createdAt ?? this.createdAt,
-      feeling: feeling ?? this.feeling,
+      feelingScore: feelingScore ?? this.feelingScore,
       tags: tags ?? this.tags,
       severity: severity ?? this.severity,
       notes: notes ?? this.notes,
@@ -45,18 +43,18 @@ class JournalEntry {
         'id': id,
         'medicationId': medicationId,
         'createdAt': createdAt.toIso8601String(),
-        'feeling': feeling.name,
+        'feelingScore': feelingScore,
         'tags': tags,
         'severity': severity,
         'notes': notes,
       };
 
   factory JournalEntry.fromMap(Map<String, dynamic> map) {
-    final feelingName = map['feeling'] as String?;
-    final feeling = JournalFeeling.values.firstWhere(
-      (value) => value.name == feelingName,
-      orElse: () => JournalFeeling.ok,
-    );
+    final feelingScoreRaw = map['feelingScore'];
+    final legacyFeeling = map['feeling'] as String?;
+    final feelingScore = feelingScoreRaw is num
+        ? feelingScoreRaw.round().clamp(1, 10)
+        : _legacyFeelingToScore(legacyFeeling);
     final tags = (map['tags'] as List?)
             ?.whereType<String>()
             .toList(growable: false) ??
@@ -69,10 +67,23 @@ class JournalEntry {
       createdAt: createdAtRaw == null
           ? DateTime.now()
           : DateTime.tryParse(createdAtRaw) ?? DateTime.now(),
-      feeling: feeling,
+      feelingScore: feelingScore,
       tags: tags,
       severity: severityRaw is num ? severityRaw.toInt() : null,
       notes: map['notes'] as String?,
     );
+  }
+}
+
+int _legacyFeelingToScore(String? feeling) {
+  switch (feeling) {
+    case 'bad':
+      return 3;
+    case 'notGreat':
+      return 5;
+    case 'ok':
+      return 7;
+    default:
+      return 6;
   }
 }

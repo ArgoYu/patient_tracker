@@ -8,30 +8,28 @@ const List<String> _kJournalTagOptions = <String>[
   'insomnia',
   'vivid dreams',
   'groggy',
-  'other',
 ];
+const int _kMaxCustomSymptomLength = 30;
 
-String _feelingLabel(JournalFeeling feeling) {
-  switch (feeling) {
-    case JournalFeeling.ok:
-      return 'OK';
-    case JournalFeeling.notGreat:
-      return 'Not great';
-    case JournalFeeling.bad:
-      return 'Bad';
-  }
-}
+String _feelingScoreLabel(int score) => 'Feeling: $score/10';
 
-Color _feelingColor(BuildContext context, JournalFeeling feeling) {
-  final scheme = Theme.of(context).colorScheme;
-  switch (feeling) {
-    case JournalFeeling.ok:
-      return scheme.primary;
-    case JournalFeeling.notGreat:
-      return scheme.tertiary;
-    case JournalFeeling.bad:
-      return scheme.error;
+Color _feelingScoreColor(ColorScheme scheme, double score) {
+  final clamped = score.clamp(1, 10);
+  final coolBase =
+      Color.lerp(scheme.primaryContainer, scheme.surfaceVariant, 0.35)!;
+  final midBase =
+      Color.lerp(scheme.secondaryContainer, scheme.tertiaryContainer, 0.35)!;
+  final warmBase =
+      Color.lerp(scheme.tertiaryContainer, scheme.errorContainer, 0.4)!;
+  if (clamped <= 3) {
+    return Color.lerp(coolBase, midBase, (clamped - 1) / 2)!;
   }
+  if (clamped <= 7) {
+    return Color.lerp(midBase, warmBase, (clamped - 4) / 3)!;
+  }
+  final warmPeak =
+      Color.lerp(warmBase, scheme.errorContainer, 0.35) ?? warmBase;
+  return Color.lerp(warmBase, warmPeak, (clamped - 8) / 2)!;
 }
 
 String _tagLabel(String tag) {
@@ -66,28 +64,39 @@ class _JournalEntrySheet extends StatefulWidget {
 }
 
 class _JournalEntrySheetState extends State<_JournalEntrySheet> {
-  late JournalFeeling _feeling;
+  late double _feelingScore;
   late Set<String> _selectedTags;
+  late List<String> _customSymptoms;
   late DateTime _timestamp;
   late bool _includeSeverity;
   int? _severity;
   late TextEditingController _notesController;
+  late TextEditingController _customSymptomController;
+  late FocusNode _customSymptomFocus;
+  bool _showCustomSymptomInput = false;
 
   @override
   void initState() {
     super.initState();
-    _feeling = widget.existing?.feeling ?? JournalFeeling.ok;
+    _feelingScore = (widget.existing?.feelingScore ?? 6).toDouble();
     _selectedTags = widget.existing?.tags.toSet() ?? <String>{};
+    _customSymptoms = (widget.existing?.tags ?? const <String>[])
+        .where((tag) => !_kJournalTagOptions.contains(tag))
+        .toList(growable: true);
     _timestamp = widget.existing?.createdAt ?? DateTime.now();
     _severity = widget.existing?.severity;
     _includeSeverity = _severity != null;
     _notesController =
         TextEditingController(text: widget.existing?.notes ?? '');
+    _customSymptomController = TextEditingController();
+    _customSymptomFocus = FocusNode();
   }
 
   @override
   void dispose() {
     _notesController.dispose();
+    _customSymptomController.dispose();
+    _customSymptomFocus.dispose();
     super.dispose();
   }
 
@@ -126,13 +135,59 @@ class _JournalEntrySheetState extends State<_JournalEntrySheet> {
     });
   }
 
+  void _startCustomSymptomInput() {
+    setState(() {
+      _showCustomSymptomInput = true;
+    });
+    _customSymptomFocus.requestFocus();
+  }
+
+  void _closeCustomSymptomInput() {
+    setState(() {
+      _showCustomSymptomInput = false;
+      _customSymptomController.clear();
+    });
+  }
+
+  void _submitCustomSymptom() {
+    final raw = _customSymptomController.text.trim();
+    if (raw.isEmpty) return;
+    if (raw.length > _kMaxCustomSymptomLength) {
+      showToast(context, 'Keep symptoms under $_kMaxCustomSymptomLength characters.');
+      return;
+    }
+    final normalized = raw.toLowerCase();
+    final exists = _selectedTags.any((tag) => tag.toLowerCase() == normalized) ||
+        _customSymptoms.any((tag) => tag.toLowerCase() == normalized) ||
+        _kJournalTagOptions.any((tag) => tag.toLowerCase() == normalized);
+    if (exists) {
+      showToast(context, 'Symptom already added.');
+      _customSymptomController.clear();
+      return;
+    }
+    setState(() {
+      _selectedTags.add(raw);
+      _customSymptoms.add(raw);
+      _customSymptomController.clear();
+      _showCustomSymptomInput = false;
+    });
+    FocusScope.of(context).unfocus();
+  }
+
+  void _removeCustomSymptom(String symptom) {
+    setState(() {
+      _selectedTags.remove(symptom);
+      _customSymptoms.remove(symptom);
+    });
+  }
+
   void _saveEntry() {
     final notes = _notesController.text.trim();
     final entry = JournalEntry(
       id: widget.existing?.id ?? const Uuid().v4(),
       medicationId: widget.medication.name,
       createdAt: _timestamp,
-      feeling: _feeling,
+      feelingScore: _feelingScore.round(),
       tags: _selectedTags.toList(growable: false),
       severity: _includeSeverity ? _severity : null,
       notes: notes.isEmpty ? null : notes,
@@ -159,45 +214,105 @@ class _JournalEntrySheetState extends State<_JournalEntrySheet> {
                 widget.existing == null
                     ? 'New journal entry'
                     : 'Edit journal entry',
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w700),
+                style: theme.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w600),
               ),
-              const SizedBox(height: 16),
-              InputDecorator(
-                decoration: const InputDecoration(
-                  labelText: 'Medication',
-                  border: OutlineInputBorder(),
+              const SizedBox(height: 12),
+              Text('Medication', style: theme.textTheme.labelLarge),
+              const SizedBox(height: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: scheme.surface,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: scheme.shadow.withValues(alpha: 0.12),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
-                child: Text(
-                  widget.medication.name,
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                child: Row(
+                  children: [
+                    Icon(Icons.medication_outlined,
+                        size: 18, color: scheme.onSurfaceVariant),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.medication.name,
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
               Text('Feeling', style: theme.textTheme.labelLarge),
               const SizedBox(height: 8),
-              SegmentedButton<JournalFeeling>(
-                segments: const <ButtonSegment<JournalFeeling>>[
-                  ButtonSegment(
-                    value: JournalFeeling.ok,
-                    label: Text('OK'),
+              Row(
+                children: [
+                  Text('1',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      )),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        activeTrackColor:
+                            _feelingScoreColor(scheme, _feelingScore),
+                        inactiveTrackColor:
+                            scheme.surfaceVariant.withValues(alpha: 0.35),
+                        thumbColor: _feelingScoreColor(scheme, _feelingScore),
+                        overlayColor: _feelingScoreColor(scheme, _feelingScore)
+                            .withValues(alpha: 0.18),
+                        trackHeight: 4,
+                        thumbShape: const RoundSliderThumbShape(
+                          enabledThumbRadius: 9,
+                        ),
+                      ),
+                      child: Slider(
+                        value: _feelingScore,
+                        min: 1,
+                        max: 10,
+                        divisions: 9,
+                        label: _feelingScore.round().toString(),
+                        onChanged: (value) {
+                          setState(() {
+                            _feelingScore = value;
+                          });
+                        },
+                      ),
+                    ),
                   ),
-                  ButtonSegment(
-                    value: JournalFeeling.notGreat,
-                    label: Text('Not great'),
-                  ),
-                  ButtonSegment(
-                    value: JournalFeeling.bad,
-                    label: Text('Bad'),
-                  ),
+                  const SizedBox(width: 8),
+                  Text('10',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      )),
                 ],
-                selected: <JournalFeeling>{_feeling},
-                onSelectionChanged: (selection) {
-                  setState(() {
-                    _feeling = selection.first;
-                  });
-                },
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _feelingScoreColor(scheme, _feelingScore)
+                        .withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _feelingScoreLabel(_feelingScore.round()),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: _feelingScoreColor(scheme, _feelingScore),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
               Text('Symptom tags', style: theme.textTheme.labelLarge),
@@ -205,24 +320,111 @@ class _JournalEntrySheetState extends State<_JournalEntrySheet> {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: _kJournalTagOptions
-                    .map(
-                      (tag) => FilterChip(
-                        label: Text(_tagLabel(tag)),
-                        selected: _selectedTags.contains(tag),
-                        onSelected: (selected) {
-                          setState(() {
-                            if (selected) {
-                              _selectedTags.add(tag);
-                            } else {
-                              _selectedTags.remove(tag);
-                            }
-                          });
-                        },
+                children: [
+                  for (final tag in _kJournalTagOptions)
+                    FilterChip(
+                      label: Text(_tagLabel(tag)),
+                      selected: _selectedTags.contains(tag),
+                      showCheckmark: false,
+                      backgroundColor:
+                          scheme.surfaceVariant.withValues(alpha: 0.4),
+                      selectedColor:
+                          scheme.secondaryContainer.withValues(alpha: 0.6),
+                      side: BorderSide(
+                        color: scheme.outlineVariant.withValues(alpha: 0.35),
                       ),
-                    )
-                    .toList(growable: false),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _selectedTags.add(tag);
+                          } else {
+                            _selectedTags.remove(tag);
+                          }
+                        });
+                      },
+                    ),
+                  for (final custom in _customSymptoms)
+                    InputChip(
+                      label: Text(custom),
+                      selected: _selectedTags.contains(custom),
+                      showCheckmark: false,
+                      backgroundColor:
+                          scheme.surfaceVariant.withValues(alpha: 0.4),
+                      selectedColor:
+                          scheme.secondaryContainer.withValues(alpha: 0.6),
+                      side: BorderSide(
+                        color: scheme.outlineVariant.withValues(alpha: 0.35),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      deleteIconColor: scheme.onSurfaceVariant,
+                      onDeleted: () => _removeCustomSymptom(custom),
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _selectedTags.add(custom);
+                          } else {
+                            _selectedTags.remove(custom);
+                          }
+                        });
+                      },
+                    ),
+                  ActionChip(
+                    label: const Text('Other'),
+                    backgroundColor:
+                        scheme.surfaceVariant.withValues(alpha: 0.4),
+                    side: BorderSide(
+                      color: scheme.outlineVariant.withValues(alpha: 0.35),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    onPressed: _startCustomSymptomInput,
+                  ),
+                ],
               ),
+              if (_showCustomSymptomInput) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _customSymptomController,
+                        focusNode: _customSymptomFocus,
+                        textInputAction: TextInputAction.done,
+                        maxLength: _kMaxCustomSymptomLength,
+                        onSubmitted: (_) => _submitCustomSymptom(),
+                        decoration: InputDecoration(
+                          hintText: 'Type a symptom...',
+                          counterText: '',
+                          filled: true,
+                          fillColor:
+                              scheme.surfaceVariant.withValues(alpha: 0.35),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.check_circle_outline),
+                      color: scheme.onSurfaceVariant,
+                      onPressed: _submitCustomSymptom,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      color: scheme.onSurfaceVariant,
+                      onPressed: _closeCustomSymptomInput,
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -236,40 +438,81 @@ class _JournalEntrySheetState extends State<_JournalEntrySheet> {
                 ],
               ),
               if (_includeSeverity) ...[
-                Slider(
-                  value: (_severity ?? 5).toDouble(),
-                  min: 1,
-                  max: 10,
-                  divisions: 9,
-                  label: '${_severity ?? 5}',
-                  onChanged: (value) {
-                    setState(() {
-                      _severity = value.round();
-                    });
-                  },
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    activeTrackColor: scheme.primaryContainer,
+                    inactiveTrackColor:
+                        scheme.surfaceVariant.withValues(alpha: 0.35),
+                    thumbColor: scheme.primaryContainer,
+                    overlayColor:
+                        scheme.primaryContainer.withValues(alpha: 0.2),
+                    trackHeight: 4,
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 8,
+                    ),
+                  ),
+                  child: Slider(
+                    value: (_severity ?? 5).toDouble(),
+                    min: 1,
+                    max: 10,
+                    divisions: 9,
+                    label: '${_severity ?? 5}',
+                    onChanged: (value) {
+                      setState(() {
+                        _severity = value.round();
+                      });
+                    },
+                  ),
                 ),
               ],
+              const SizedBox(height: 12),
+              Text('Timestamp', style: theme.textTheme.labelLarge),
               const SizedBox(height: 8),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.schedule),
-                title: const Text('Timestamp'),
-                subtitle: Text(formatDateTime(_timestamp)),
-                trailing: const Icon(Icons.edit_outlined, size: 20),
+              InkWell(
                 onTap: _editTimestamp,
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceVariant.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.schedule,
+                          size: 18, color: scheme.onSurfaceVariant),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          formatDateTime(_timestamp),
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ),
+                      Icon(Icons.edit_outlined,
+                          size: 18, color: scheme.onSurfaceVariant),
+                    ],
+                  ),
+                ),
               ),
+              const SizedBox(height: 12),
+              Text('Notes', style: theme.textTheme.labelLarge),
               const SizedBox(height: 8),
               TextField(
                 controller: _notesController,
                 maxLines: 4,
                 minLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Notes',
+                decoration: InputDecoration(
                   hintText: 'What happened after you took it?',
-                  border: OutlineInputBorder(),
+                  filled: true,
+                  fillColor: scheme.surfaceVariant.withValues(alpha: 0.35),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
               ),
-              if (_feeling == JournalFeeling.bad) ...[
+              if (_feelingScore <= 3) ...[
                 const SizedBox(height: 12),
                 Text(
                   'If symptoms are severe or urgent, contact your clinician or seek emergency care.',
@@ -284,6 +527,11 @@ class _JournalEntrySheetState extends State<_JournalEntrySheet> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                      ),
                       child: const Text('Cancel'),
                     ),
                   ),
@@ -291,6 +539,11 @@ class _JournalEntrySheetState extends State<_JournalEntrySheet> {
                   Expanded(
                     child: FilledButton(
                       onPressed: _saveEntry,
+                      style: FilledButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                      ),
                       child: const Text('Save'),
                     ),
                   ),
@@ -404,8 +657,9 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
     await _applyEntries(next);
   }
 
-  Widget _buildFeelingBadge(BuildContext context, JournalFeeling feeling) {
-    final color = _feelingColor(context, feeling);
+  Widget _buildFeelingBadge(BuildContext context, int feelingScore) {
+    final color =
+        _feelingScoreColor(Theme.of(context).colorScheme, feelingScore.toDouble());
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -413,7 +667,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
-        _feelingLabel(feeling),
+        '${feelingScore.clamp(1, 10)}/10',
         style: Theme.of(context)
             .textTheme
             .labelSmall
@@ -447,7 +701,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                       ?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(width: 8),
-                _buildFeelingBadge(context, entry.feeling),
+                _buildFeelingBadge(context, entry.feelingScore),
                 const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.delete_outline, size: 20),
