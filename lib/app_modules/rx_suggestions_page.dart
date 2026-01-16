@@ -5,17 +5,18 @@ class RxSuggestionsPage extends StatefulWidget {
       {super.key, required this.meds, required this.onCheckIn});
 
   final List<RxMedication> meds;
-  final void Function(int index, DateTime when) onCheckIn;
+  final void Function(int index, DateTime when, MedTimeSlot? slot) onCheckIn;
 
   @override
   State<RxSuggestionsPage> createState() => _RxSuggestionsPageState();
 }
 
 class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
-  static const double _kBottomActionBarHeight = 72;
   final Map<int, TimeOfDay> _reminderTimes = {};
   final Map<int, Timer> _timers = {};
   final Map<int, DateTime> _scheduledFire = {};
+  final Set<int> _selectedMedIndices = <int>{};
+  final Map<int, MedTimeSlot?> _pendingCheckInSlots = <int, MedTimeSlot?>{};
 
   final JournalRepository _journalRepository = JournalRepository();
   List<JournalEntry> _journalEntries = <JournalEntry>[];
@@ -83,11 +84,12 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
     await _saveJournalEntry(entry);
   }
 
-  Future<void> _openJournalHistory(RxMedication med) async {
+  Future<void> _openJournalHistoryAllMeds() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => JournalEntriesPage(
-          medication: med,
+        builder: (_) => RxJournalPage(
+          scope: RxScope.allMeds,
+          meds: widget.meds,
           entries: _journalEntries,
           onEntriesChanged: (entries) async {
             _journalEntries = List<JournalEntry>.from(entries)
@@ -101,9 +103,20 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
     );
   }
 
-  Future<void> _checkIn(int index) async {
+  void _openHistoryAllMeds() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => RxHistoryPage(
+          scope: RxScope.allMeds,
+          meds: widget.meds,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _checkIn(int index, {MedTimeSlot? slot}) async {
     final now = DateTime.now();
-    widget.onCheckIn(index, now);
+    widget.onCheckIn(index, now, slot);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -117,9 +130,14 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
     if (indices.isEmpty) return;
     final now = DateTime.now();
     for (final index in indices) {
-      widget.onCheckIn(index, now);
+      final slot = _pendingCheckInSlots[index] ?? _nextRemainingSlotForMed(index);
+      widget.onCheckIn(index, now, slot);
     }
     if (!mounted) return;
+    _selectedMedIndices
+      ..clear()
+      ..addAll(indices);
+    _pendingCheckInSlots.clear();
     setState(() {});
     final names = indices.map((i) => widget.meds[i].name).join(', ');
     ScaffoldMessenger.of(context).showSnackBar(
@@ -163,14 +181,14 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
               child: const Text('Dismiss'),
             ),
             FilledButton(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                _checkIn(index);
-              },
-              child: const Text('Check in now'),
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    _checkIn(index, slot: _nextRemainingSlotForMed(index));
+                  },
+                  child: const Text('Check in now'),
+                ),
+              ],
             ),
-          ],
-        ),
       );
     });
     setState(() {});
@@ -204,36 +222,78 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
         elevation: 0,
       );
 
-  bool _isSameDay(DateTime a, DateTime b) =>
-      a.year == b.year && a.month == b.month && a.day == b.day;
-
   String _statusText(List<DateTime> logs) {
     if (logs.isEmpty) return 'Not checked in yet';
     final last = logs.first;
     final now = DateTime.now();
-    if (_isSameDay(last, now)) return 'Taken today';
-    if (_isSameDay(last, now.subtract(const Duration(days: 1)))) {
+    if (isSameDay(last, now)) return 'Taken today';
+    if (isSameDay(last, now.subtract(const Duration(days: 1)))) {
       return 'Last taken yesterday';
     }
     return 'Last taken ${formatDate(last)}';
   }
 
-  IconData _statusIcon(List<DateTime> logs) {
-    if (logs.isEmpty) return Icons.radio_button_unchecked;
-    final last = logs.first;
+  _MedDoseProgress _doseProgressForMed(RxMedication med) {
     final now = DateTime.now();
-    if (_isSameDay(last, now)) return Icons.check_circle_rounded;
-    return Icons.history_rounded;
+    if (med.timesOfDay.isEmpty) {
+      final takenToday = med.intakeLogs.any(
+        (log) =>
+            log.status == MedIntakeStatus.taken &&
+            isSameDay(log.takenAt, now),
+      );
+      return _MedDoseProgress(totalDue: 1, takenCount: takenToday ? 1 : 0);
+    }
+
+    final dueSlots = List<MedTimeSlot>.from(med.timesOfDay)
+      ..sort((a, b) => a.order.compareTo(b.order));
+    final takenSlots = <MedTimeSlot>{};
+    var unassigned = 0;
+    for (final log in med.intakeLogs) {
+      if (log.status != MedIntakeStatus.taken) continue;
+      if (!isSameDay(log.takenAt, now)) continue;
+      if (log.slot == null) {
+        unassigned += 1;
+      } else if (dueSlots.contains(log.slot)) {
+        takenSlots.add(log.slot!);
+      }
+    }
+
+    if (unassigned > 0) {
+      final remaining = dueSlots
+          .where((slot) => !takenSlots.contains(slot))
+          .toList();
+      for (var i = 0; i < unassigned && i < remaining.length; i++) {
+        takenSlots.add(remaining[i]);
+      }
+    }
+
+    return _MedDoseProgress(
+      totalDue: dueSlots.length,
+      takenCount: takenSlots.length,
+    );
   }
 
-  Color _statusColor(BuildContext context, List<DateTime> logs) {
-    final scheme = Theme.of(context).colorScheme;
-    if (logs.isEmpty) return scheme.onSurface.withValues(alpha: 0.45);
-    final last = logs.first;
-    if (_isSameDay(last, DateTime.now())) {
-      return scheme.primary.withValues(alpha: 0.75);
+  void _clearTodayLogs(int medIndex) {
+    final med = widget.meds[medIndex];
+    final now = DateTime.now();
+    med.intakeLog.removeWhere((entry) => isSameDay(entry, now));
+    med.intakeLogs.removeWhere(
+      (entry) =>
+          entry.status == MedIntakeStatus.taken &&
+          isSameDay(entry.takenAt, now),
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Removed today\'s log for ${med.name}')),
+    );
+    setState(() {});
+  }
+
+  void _toggleQuickCheckIn(int medIndex, _MedDoseProgress progress) {
+    if (progress.isComplete) {
+      _clearTodayLogs(medIndex);
+      return;
     }
-    return scheme.onSurface.withValues(alpha: 0.6);
+    _checkIn(medIndex, slot: _nextRemainingSlotForMed(medIndex));
   }
 
   TextStyle? _secondaryText(BuildContext context) =>
@@ -252,9 +312,10 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
     required String title,
     required String subtitle,
     required List<RxMedication> meds,
+    Set<int> initialSelectedIndices = const <int>{},
     required void Function(List<int> selectedIndices) onConfirm,
   }) {
-    final selected = <int>{};
+    final selected = <int>{}..addAll(initialSelectedIndices);
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -271,7 +332,8 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF121417),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                  border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08)),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -284,14 +346,14 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
-                              color: Colors.white.withOpacity(0.92),
+                              color: Colors.white.withValues(alpha: 0.92),
                             ),
                           ),
                         ),
                         IconButton(
                           onPressed: () => Navigator.pop(ctx),
                           icon: Icon(Icons.close,
-                              color: Colors.white.withOpacity(0.75)),
+                              color: Colors.white.withValues(alpha: 0.75)),
                         ),
                       ],
                     ),
@@ -299,7 +361,8 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
                       alignment: Alignment.centerLeft,
                       child: Text(
                         subtitle,
-                        style: TextStyle(color: Colors.white.withOpacity(0.65)),
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.65)),
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -334,7 +397,8 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
                         shrinkWrap: true,
                         itemCount: meds.length,
                         separatorBuilder: (_, __) =>
-                            Divider(color: Colors.white.withOpacity(0.06)),
+                            Divider(
+                                color: Colors.white.withValues(alpha: 0.06)),
                         itemBuilder: (_, i) {
                           final med = meds[i];
                           final isChecked = selected.contains(i);
@@ -376,7 +440,7 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
                                           style: TextStyle(
                                             fontWeight: FontWeight.w700,
                                             color:
-                                                Colors.white.withOpacity(0.90),
+                                            Colors.white.withValues(alpha: 0.90),
                                           ),
                                         ),
                                         const SizedBox(height: 2),
@@ -384,7 +448,7 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
                                           _medSubtitle(med),
                                           style: TextStyle(
                                             color:
-                                                Colors.white.withOpacity(0.62),
+                                            Colors.white.withValues(alpha: 0.62),
                                           ),
                                         ),
                                       ],
@@ -432,12 +496,16 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
     );
   }
 
-  void _openMultiMedCheckInSheet() {
+  void _openMultiMedCheckInSheet({bool keepPendingSlots = false}) {
     if (widget.meds.isEmpty) return;
+    if (!keepPendingSlots) {
+      _pendingCheckInSlots.clear();
+    }
     _showMedMultiSelectSheet(
       title: 'Check in',
       subtitle: 'Select medications',
       meds: widget.meds,
+      initialSelectedIndices: _selectedMedIndices,
       onConfirm: _checkInMeds,
     );
   }
@@ -467,6 +535,121 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
         builder: (_) => _MultiMedJournalComposerPage(meds: meds),
       ),
     );
+  }
+
+  String _doseKey(String medId, MedTimeSlot slot) => '$medId-${slot.name}';
+
+  _SummaryData _buildSummaryData() {
+    final now = DateTime.now();
+    final due = <_DueDose>[];
+    for (var i = 0; i < widget.meds.length; i++) {
+      final med = widget.meds[i];
+      if (!med.isActive || med.timesOfDay.isEmpty) continue;
+      for (final slot in med.timesOfDay) {
+        due.add(_DueDose(
+          medId: med.id,
+          medIndex: i,
+          medName: med.name,
+          slot: slot,
+        ));
+      }
+    }
+
+    due.sort((a, b) {
+      final order = a.slot.order.compareTo(b.slot.order);
+      if (order != 0) return order;
+      return a.medName.compareTo(b.medName);
+    });
+
+    final taken = <String>{};
+    final unassignedCounts = <String, int>{};
+    for (final med in widget.meds) {
+      for (final log in med.intakeLogs) {
+        if (log.status != MedIntakeStatus.taken) continue;
+        if (!isSameDay(log.takenAt, now)) continue;
+        if (log.slot == null) {
+          unassignedCounts[med.id] = (unassignedCounts[med.id] ?? 0) + 1;
+          continue;
+        }
+        taken.add(_doseKey(med.id, log.slot!));
+      }
+    }
+
+    if (unassignedCounts.isNotEmpty) {
+      for (final entry in unassignedCounts.entries) {
+        final available = due
+            .where((dose) =>
+                dose.medId == entry.key &&
+                !taken.contains(_doseKey(dose.medId, dose.slot)))
+            .toList()
+          ..sort((a, b) => a.slot.order.compareTo(b.slot.order));
+        for (var i = 0; i < entry.value && i < available.length; i++) {
+          final dose = available[i];
+          taken.add(_doseKey(dose.medId, dose.slot));
+        }
+      }
+    }
+
+    final remaining = due
+        .where((dose) => !taken.contains(_doseKey(dose.medId, dose.slot)))
+        .toList();
+    final totalDue = due.length;
+    final takenCount = math.min(totalDue, taken.length);
+    final remainingCount = remaining.length;
+
+    remaining.sort((a, b) {
+      final order = a.slot.order.compareTo(b.slot.order);
+      if (order != 0) return order;
+      return a.medName.compareTo(b.medName);
+    });
+
+    final preview = remaining
+        .take(3)
+        .map((dose) => RemainingPreviewItem(
+              medName: dose.medName,
+              slotLabel: dose.slot.label,
+            ))
+        .toList();
+
+    final nextSlotByMed = <int, MedTimeSlot?>{};
+    for (final dose in remaining) {
+      nextSlotByMed.putIfAbsent(dose.medIndex, () => dose.slot);
+    }
+
+    return _SummaryData(
+      vm: SummaryVM(
+        totalDue: totalDue,
+        takenCount: takenCount,
+        remainingCount: remainingCount,
+        preview: preview,
+        moreCount: remainingCount > 3 ? remainingCount - 3 : 0,
+        statusTitle: takenCount > 0 ? "You're on track" : "Let's get started",
+        nextUpLabel:
+            remaining.isEmpty ? null : 'Next up: ${remaining.first.slot.label}',
+      ),
+      remainingDoses: remaining,
+      remainingMedIndices: remaining.map((dose) => dose.medIndex).toSet(),
+      nextSlotByMed: nextSlotByMed,
+    );
+  }
+
+  MedTimeSlot? _nextRemainingSlotForMed(int medIndex) {
+    final summary = _buildSummaryData();
+    return summary.nextSlotByMed[medIndex];
+  }
+
+  void _handleSummaryCheckIn(_SummaryData summary) {
+    if (summary.remainingMedIndices.isEmpty) {
+      showToast(context, 'No remaining doses to check in.');
+      return;
+    }
+    _selectedMedIndices
+      ..clear()
+      ..addAll(summary.remainingMedIndices);
+    _pendingCheckInSlots
+      ..clear()
+      ..addAll(summary.nextSlotByMed);
+    _openMultiMedCheckInSheet(keepPendingSlots: true);
   }
 
   Widget _buildEmptyState(BuildContext context) {
@@ -510,78 +693,59 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
     }
 
     final bottomInset = MediaQuery.of(context).padding.bottom;
+    final summary = _buildSummaryData();
 
     return Scaffold(
       appBar: _buildAppBar(),
-      body: Stack(
-        children: [
-          ListView.separated(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              8,
-              16,
-              24 + _kBottomActionBarHeight + 16 + bottomInset,
-            ),
-            itemCount: widget.meds.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 14),
-            itemBuilder: (context, index) {
-              final med = widget.meds[index];
-              final logs = List<DateTime>.from(med.intakeLog)
-                ..sort((a, b) => b.compareTo(a));
-              final reminder = _reminderTimes[index];
-              final scheduled = _scheduledFire[index];
-              final statusText = _statusText(logs);
-              final isExpanded = _expandedIndex == index;
-              return RxMedExpandableCard(
-                med: med,
-                isExpanded: isExpanded,
-                statusText: statusText,
-                statusIcon: _statusIcon(logs),
-                statusColor: _statusColor(context, logs),
-                reminder: reminder,
-                scheduled: scheduled,
-                secondaryTextStyle: _secondaryText(context),
-                onToggle: () {
-                  setState(() {
-                    _expandedIndex = isExpanded ? null : index;
-                  });
-                },
-                onReminderTap: () => reminder == null
-                    ? _pickReminder(index)
-                    : _cancelReminder(index),
-                onTimelineTap: () {
-                  final checkIns = med.intakeLog
-                      .map((entry) =>
-                          RxCheckIn(timestamp: entry, medicationId: med.name))
-                      .toList();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => MedicationTimelineScreen(
-                        medicationId: med.name,
-                        medicationDisplayName: med.name,
-                        checkIns: checkIns,
-                      ),
-                    ),
-                  );
-                },
-                onJournalHistoryTap: () => _openJournalHistory(med),
-              );
+      body: ListView.separated(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          8,
+          16,
+          24 + bottomInset,
+        ),
+        itemCount: widget.meds.length + 1,
+        separatorBuilder: (_, __) => const SizedBox(height: 14),
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return DailyMedSummaryCard(
+              vm: summary.vm,
+              onCheckIn: () => _handleSummaryCheckIn(summary),
+              onJournal: _openJournalMultiSelectSheet,
+              onOpenHistory: _openHistoryAllMeds,
+              onOpenJournal: _openJournalHistoryAllMeds,
+            );
+          }
+          final medIndex = index - 1;
+          final med = widget.meds[medIndex];
+          final logs = List<DateTime>.from(med.intakeLog)
+            ..sort((a, b) => b.compareTo(a));
+          final reminder = _reminderTimes[medIndex];
+          final scheduled = _scheduledFire[medIndex];
+          final statusText = _statusText(logs);
+          final isExpanded = _expandedIndex == medIndex;
+          final doseProgress = _doseProgressForMed(med);
+          return RxMedExpandableCard(
+            med: med,
+            isExpanded: isExpanded,
+            isChecked: doseProgress.isComplete,
+            isPartial: doseProgress.isPartial,
+            partialLabel: doseProgress.label,
+            statusText: statusText,
+            reminder: reminder,
+            scheduled: scheduled,
+            secondaryTextStyle: _secondaryText(context),
+            onToggle: () {
+              setState(() {
+                _expandedIndex = isExpanded ? null : medIndex;
+              });
             },
-          ),
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 12,
-            child: SafeArea(
-              top: false,
-              child: _RxBottomActionBar(
-                height: _kBottomActionBarHeight,
-                onCheckIn: _openMultiMedCheckInSheet,
-                onJournal: _openJournalMultiSelectSheet,
-              ),
-            ),
-          ),
-        ],
+            onCheckboxTap: () => _toggleQuickCheckIn(medIndex, doseProgress),
+            onReminderTap: () => reminder == null
+                ? _pickReminder(medIndex)
+                : _cancelReminder(medIndex),
+          );
+        },
       ),
     );
   }
@@ -592,30 +756,30 @@ class RxMedExpandableCard extends StatelessWidget {
     super.key,
     required this.med,
     required this.isExpanded,
+    required this.isChecked,
+    required this.isPartial,
+    required this.partialLabel,
     required this.statusText,
-    required this.statusIcon,
-    required this.statusColor,
     required this.reminder,
     required this.scheduled,
     required this.secondaryTextStyle,
     required this.onToggle,
+    required this.onCheckboxTap,
     required this.onReminderTap,
-    required this.onTimelineTap,
-    required this.onJournalHistoryTap,
   });
 
   final RxMedication med;
   final bool isExpanded;
+  final bool isChecked;
+  final bool isPartial;
+  final String? partialLabel;
   final String statusText;
-  final IconData statusIcon;
-  final Color statusColor;
   final TimeOfDay? reminder;
   final DateTime? scheduled;
   final TextStyle? secondaryTextStyle;
   final VoidCallback onToggle;
+  final VoidCallback onCheckboxTap;
   final VoidCallback onReminderTap;
-  final VoidCallback onTimelineTap;
-  final VoidCallback onJournalHistoryTap;
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -627,31 +791,37 @@ class RxMedExpandableCard extends StatelessWidget {
         children: [
           Material(
             color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(22),
-              onTap: onToggle,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _MedCompletionCheckbox(
+                    isChecked: isChecked,
+                    isPartial: isPartial,
+                    partialLabel: partialLabel,
+                    onTap: onCheckboxTap,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(18),
+                      onTap: onToggle,
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            med.name,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Icon(statusIcon, size: 16, color: statusColor),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  med.name,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
                                   '$statusText бд ${med.dose}',
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     fontWeight: FontWeight.w500,
@@ -659,23 +829,23 @@ class RxMedExpandableCard extends StatelessWidget {
                                         .withValues(alpha: 0.78),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Icon(
+                            isExpanded
+                                ? Icons.keyboard_arrow_up
+                                : Icons.keyboard_arrow_down,
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.75),
+                            size: 22,
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Icon(
-                      isExpanded
-                          ? Icons.keyboard_arrow_up
-                          : Icons.keyboard_arrow_down,
-                      color:
-                          theme.colorScheme.onSurface.withValues(alpha: 0.75),
-                      size: 22,
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -730,8 +900,6 @@ class RxMedExpandableCard extends StatelessWidget {
                         const SizedBox(height: 12),
                         _RxMedExpandedBody(
                           med: med,
-                          onTimelineTap: onTimelineTap,
-                          onJournalHistoryTap: onJournalHistoryTap,
                         ),
                       ],
                     ),
@@ -744,61 +912,71 @@ class RxMedExpandableCard extends StatelessWidget {
   }
 }
 
-class _RxBottomActionBar extends StatelessWidget {
-  const _RxBottomActionBar({
-    required this.height,
-    required this.onCheckIn,
-    required this.onJournal,
+class _MedCompletionCheckbox extends StatelessWidget {
+  const _MedCompletionCheckbox({
+    required this.isChecked,
+    required this.isPartial,
+    required this.partialLabel,
+    required this.onTap,
   });
 
-  final double height;
-  final VoidCallback onCheckIn;
-  final VoidCallback onJournal;
+  final bool isChecked;
+  final bool isPartial;
+  final String? partialLabel;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Container(
-      height: height,
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-      decoration: BoxDecoration(
-        color: scheme.surface.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: scheme.onSurface.withValues(alpha: 0.08),
+    final scheme = Theme.of(context).colorScheme;
+    const size = 30.0;
+    const radius = 8.0;
+    final fillColor = isChecked
+        ? scheme.primary
+        : isPartial
+            ? scheme.primary.withValues(alpha: 0.12)
+            : Colors.transparent;
+    final borderColor = isChecked
+        ? Colors.transparent
+        : scheme.onSurface.withValues(alpha: 0.25);
+
+    Widget content = const SizedBox.shrink();
+    if (isChecked) {
+      content = Icon(
+        Icons.check_rounded,
+        size: 20,
+        color: scheme.onPrimary,
+      );
+    } else if (isPartial) {
+      content = partialLabel == null
+          ? Icon(
+              Icons.remove_rounded,
+              size: 20,
+              color: scheme.primary,
+            )
+          : Text(
+              partialLabel!,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: scheme.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+            );
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(radius),
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: fillColor,
+            borderRadius: BorderRadius.circular(radius),
+            border: Border.all(color: borderColor, width: 1.5),
+          ),
+          child: Center(child: content),
         ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: FilledButton(
-              onPressed: onCheckIn,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: const StadiumBorder(),
-                backgroundColor: scheme.primary.withValues(alpha: 0.2),
-                foregroundColor: scheme.onSurface,
-              ),
-              child: const Text('Check in'),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: OutlinedButton(
-              onPressed: onJournal,
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: const StadiumBorder(),
-                side: BorderSide(
-                  color: scheme.onSurface.withValues(alpha: 0.2),
-                ),
-                foregroundColor: scheme.onSurface,
-              ),
-              child: const Text('Journal'),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -807,13 +985,9 @@ class _RxBottomActionBar extends StatelessWidget {
 class _RxMedExpandedBody extends StatelessWidget {
   const _RxMedExpandedBody({
     required this.med,
-    required this.onTimelineTap,
-    required this.onJournalHistoryTap,
   });
 
   final RxMedication med;
-  final VoidCallback onTimelineTap;
-  final VoidCallback onJournalHistoryTap;
 
   @override
   Widget build(BuildContext context) {
@@ -851,76 +1025,6 @@ class _RxMedExpandedBody extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(med.sideEffects, style: subtleText),
-        const SizedBox(height: 12),
-        TextButton(
-          onPressed: onTimelineTap,
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            foregroundColor: theme.colorScheme.onSurfaceVariant,
-            minimumSize: const Size(0, 36),
-            alignment: Alignment.centerLeft,
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.calendar_month_outlined,
-                  size: 18,
-                  color: theme.colorScheme.onSurfaceVariant
-                      .withValues(alpha: 0.75)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Timeline',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant
-                        .withValues(alpha: 0.9),
-                  ),
-                ),
-              ),
-              Text(
-                'View history',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant
-                      .withValues(alpha: 0.9),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 4),
-        TextButton(
-          onPressed: onJournalHistoryTap,
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            foregroundColor: theme.colorScheme.onSurfaceVariant,
-            minimumSize: const Size(0, 36),
-            alignment: Alignment.centerLeft,
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.menu_book_outlined,
-                  size: 18,
-                  color: theme.colorScheme.onSurfaceVariant
-                      .withValues(alpha: 0.75)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Journal',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant
-                        .withValues(alpha: 0.9),
-                  ),
-                ),
-              ),
-              Text(
-                'View journal',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant
-                      .withValues(alpha: 0.9),
-                ),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }
@@ -1011,6 +1115,341 @@ class _MultiMedJournalComposerPageState
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _MedDoseProgress {
+  const _MedDoseProgress({
+    required this.totalDue,
+    required this.takenCount,
+  });
+
+  final int totalDue;
+  final int takenCount;
+
+  bool get isComplete => totalDue == 0 ? takenCount > 0 : takenCount >= totalDue;
+
+  bool get isPartial =>
+      totalDue > 1 && takenCount > 0 && takenCount < totalDue;
+
+  String? get label => isPartial ? '$takenCount/$totalDue' : null;
+}
+
+class SummaryVM {
+  const SummaryVM({
+    required this.totalDue,
+    required this.takenCount,
+    required this.remainingCount,
+    required this.preview,
+    required this.moreCount,
+    required this.statusTitle,
+    this.nextUpLabel,
+  });
+
+  final int totalDue;
+  final int takenCount;
+  final int remainingCount;
+  final List<RemainingPreviewItem> preview;
+  final int moreCount;
+  final String statusTitle;
+  final String? nextUpLabel;
+}
+
+class RemainingPreviewItem {
+  const RemainingPreviewItem({required this.medName, required this.slotLabel});
+
+  final String medName;
+  final String slotLabel;
+}
+
+class _SummaryData {
+  const _SummaryData({
+    required this.vm,
+    required this.remainingDoses,
+    required this.remainingMedIndices,
+    required this.nextSlotByMed,
+  });
+
+  final SummaryVM vm;
+  final List<_DueDose> remainingDoses;
+  final Set<int> remainingMedIndices;
+  final Map<int, MedTimeSlot?> nextSlotByMed;
+}
+
+class _DueDose {
+  const _DueDose({
+    required this.medId,
+    required this.medIndex,
+    required this.medName,
+    required this.slot,
+  });
+
+  final String medId;
+  final int medIndex;
+  final String medName;
+  final MedTimeSlot slot;
+}
+
+enum RxScope { allMeds }
+
+class RxHistoryPage extends StatelessWidget {
+  const RxHistoryPage({
+    super.key,
+    required this.scope,
+    required this.meds,
+  });
+
+  final RxScope scope;
+  final List<RxMedication> meds;
+
+  @override
+  Widget build(BuildContext context) {
+    final checkIns = <RxCheckIn>[
+      for (final med in meds)
+        for (final entry in med.intakeLog)
+          RxCheckIn(timestamp: entry, medicationId: med.name),
+    ];
+    final label = scope == RxScope.allMeds ? 'All medications' : 'Medication';
+    return MedicationTimelineScreen(
+      medicationId: scope == RxScope.allMeds ? 'all' : 'medication',
+      medicationDisplayName: label,
+      checkIns: checkIns,
+    );
+  }
+}
+
+class RxJournalPage extends StatelessWidget {
+  const RxJournalPage({
+    super.key,
+    required this.scope,
+    required this.meds,
+    required this.entries,
+    required this.onEntriesChanged,
+  });
+
+  final RxScope scope;
+  final List<RxMedication> meds;
+  final List<JournalEntry> entries;
+  final Future<void> Function(List<JournalEntry> entries) onEntriesChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final isAll = scope == RxScope.allMeds;
+    return JournalEntriesPage(
+      medication: isAll ? null : (meds.isNotEmpty ? meds.first : null),
+      medications: meds,
+      entries: entries,
+      onEntriesChanged: onEntriesChanged,
+    );
+  }
+}
+
+class DailyMedSummaryCard extends StatelessWidget {
+  const DailyMedSummaryCard({
+    super.key,
+    required this.vm,
+    required this.onCheckIn,
+    required this.onJournal,
+    required this.onOpenHistory,
+    required this.onOpenJournal,
+  });
+
+  final SummaryVM vm;
+  final VoidCallback onCheckIn;
+  final VoidCallback onJournal;
+  final VoidCallback onOpenHistory;
+  final VoidCallback onOpenJournal;
+
+  Color _progressColor(ColorScheme scheme, double p) {
+    final clamped = p.clamp(0.0, 1.0);
+    final danger = scheme.error;
+    final warning = scheme.tertiary;
+    final primary = scheme.primary;
+    final success = scheme.secondary;
+    if (clamped < 0.3) {
+      return Color.lerp(danger, warning, clamped / 0.3) ?? warning;
+    }
+    if (clamped < 0.6) {
+      return Color.lerp(warning, primary, (clamped - 0.3) / 0.3) ?? primary;
+    }
+    return Color.lerp(primary, success, (clamped - 0.6) / 0.4) ?? success;
+  }
+
+  Widget _buildMiniAction({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 16),
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(0, 34),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        shape: const StadiumBorder(),
+        side: BorderSide(
+          color: scheme.onSurface.withValues(alpha: 0.16),
+        ),
+        foregroundColor: scheme.onSurface.withValues(alpha: 0.85),
+        backgroundColor: scheme.surfaceContainerHighest.withValues(alpha: 0.2),
+        textStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final muted = scheme.onSurface.withValues(alpha: 0.6);
+    final progress = vm.totalDue == 0
+        ? 0.0
+        : vm.takenCount / math.max(vm.totalDue, 1);
+
+    return Glass(
+      radius: 24,
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Today',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Medication summary',
+                      style: theme.textTheme.bodySmall?.copyWith(color: muted),
+                    ),
+                  ],
+                ),
+              ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  _buildMiniAction(
+                    context: context,
+                    icon: Icons.history_rounded,
+                    label: 'History',
+                    onPressed: onOpenHistory,
+                  ),
+                  _buildMiniAction(
+                    context: context,
+                    icon: Icons.menu_book_outlined,
+                    label: 'Journal',
+                    onPressed: onOpenJournal,
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            vm.statusTitle,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (vm.totalDue == 0) ...[
+            Text(
+              'No scheduled meds today',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Add a medication or update your schedule to get reminders here.',
+              style: theme.textTheme.bodySmall?.copyWith(color: muted),
+            ),
+          ] else ...[
+            TweenAnimationBuilder<double>(
+              tween: Tween<double>(
+                begin: 0,
+                end: progress.clamp(0, 1).toDouble(),
+              ),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOut,
+              builder: (context, value, child) => ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: Container(
+                  height: 11,
+                  decoration: BoxDecoration(
+                    color: scheme.surface.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: value.clamp(0.0, 1.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: _progressColor(scheme, value),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Taken ${vm.takenCount} of ${vm.totalDue}',
+              style: theme.textTheme.bodySmall?.copyWith(color: muted),
+            ),
+            Text(
+              'Remaining: ${vm.remainingCount} doses',
+              style: theme.textTheme.bodySmall?.copyWith(color: muted),
+            ),
+          ],
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton(
+                  onPressed: onCheckIn,
+                  style: FilledButton.styleFrom(
+                    shape: const StadiumBorder(),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text('Check in'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: onJournal,
+                  style: OutlinedButton.styleFrom(
+                    shape: const StadiumBorder(),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: BorderSide(
+                      color: scheme.onSurface.withValues(alpha: 0.18),
+                    ),
+                  ),
+                  child: const Text('Journal'),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

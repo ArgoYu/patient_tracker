@@ -83,6 +83,7 @@ class _MyAiPageState extends State<MyAiPage> {
     bool allowed,
   ) async {
     final confirmed = await _showClinicianConsentDialog(context, allowed);
+    if (!mounted) return;
     if (confirmed == null) return;
     _coCoordinator.updatePermission(confirmed);
     _showMyAiSnack(
@@ -98,6 +99,7 @@ class _MyAiPageState extends State<MyAiPage> {
     bool allowed,
   ) async {
     final confirmed = await _showPatientConsentDialog(context, allowed);
+    if (!mounted) return;
     if (confirmed == null) return;
     _coCoordinator.updateRecordingConsent(confirmed);
     _showMyAiSnack(
@@ -536,7 +538,7 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.onSurface.withOpacity(0.32),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.32),
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -621,7 +623,7 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
                   color: Theme.of(sheetContext)
                       .colorScheme
                       .onSurface
-                      .withOpacity(0.32),
+                      .withValues(alpha: 0.32),
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
@@ -639,7 +641,7 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
               ...personalChatContacts.map(
                 (contact) => ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: contact.color.withOpacity(0.16),
+                    backgroundColor: contact.color.withValues(alpha: 0.16),
                     child: Icon(contact.icon, color: contact.color),
                   ),
                   title: Text(contact.name),
@@ -908,16 +910,16 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
             isCompleting: _completingSession,
             onViewSummary: null,
           ),
-          SizedBox(height: AppThemeTokens.gap),
+          const SizedBox(height: AppThemeTokens.gap),
           const AiGenerateReportButton(),
-          SizedBox(height: AppThemeTokens.gap),
+          const SizedBox(height: AppThemeTokens.gap),
           _ReportStatusNotice(status: widget.coordinator.reportStatus),
         ];
 
         final hasPatientAccess =
             widget.coordinator.canPatientViewReport && outcome != null;
         if (hasPatientAccess) {
-          cards.add(SizedBox(height: AppThemeTokens.gap));
+          cards.add(const SizedBox(height: AppThemeTokens.gap));
           cards.add(
             _AutoProcessActionsCard(
               states: Map<_AutoProcess, _AutoProcessState>.unmodifiable(
@@ -932,7 +934,7 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
             ),
           );
         } else {
-          cards.add(SizedBox(height: AppThemeTokens.gap));
+          cards.add(const SizedBox(height: AppThemeTokens.gap));
           cards.add(
             _PatientViewLockedCard(
               status: widget.coordinator.reportStatus,
@@ -1003,7 +1005,7 @@ class _MyAiDetailPageState extends State<_MyAiDetailPage> {
                 ),
                 itemBuilder: (context, index) => cards[index],
                 separatorBuilder: (context, index) =>
-                    SizedBox(height: AppThemeTokens.gap),
+                    const SizedBox(height: AppThemeTokens.gap),
                 itemCount: cards.length,
               ),
             ],
@@ -1641,8 +1643,7 @@ class _ConsultSummaryBody extends StatelessWidget {
     TextStyle bodyStyle,
   ) {
     final approvalTime = outcome.doctorApprovalTime ?? outcome.generatedAt;
-    final doctorName =
-        outcome.doctorName ?? outcome.contactName ?? 'Dr. Clinician';
+    final doctorName = outcome.doctorName ?? outcome.contactName;
     final signature = outcome.doctorSignature;
     final signatureLabel = outcome.doctorSignatureLabel;
     return Column(
@@ -1995,7 +1996,7 @@ class _SessionOutputItem extends StatelessWidget {
     final arrowColor =
         enabled ? colorScheme.primary : colorScheme.onSurfaceVariant;
     final backgroundColor = colorScheme.surfaceContainerHighest;
-    final borderColor = colorScheme.outlineVariant.withOpacity(0.4);
+    final borderColor = colorScheme.outlineVariant.withValues(alpha: 0.4);
 
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 160),
@@ -2022,7 +2023,7 @@ class _SessionOutputItem extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: iconColor.withOpacity(0.15),
+                      color: iconColor.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
                     alignment: Alignment.center,
@@ -2961,6 +2962,7 @@ class _TimelineEntry {
   final PlanSource source;
 }
 
+// ignore: unused_element
 class _MyAiToolsSection extends StatelessWidget {
   const _MyAiToolsSection();
 
@@ -3190,10 +3192,10 @@ class _ReportStatusNotice extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppThemeTokens.cardPadding),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant,
+        color: theme.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(AppThemeTokens.cardRadius),
         border: Border.all(
-          color: theme.colorScheme.onSurface.withOpacity(0.06),
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.06),
         ),
       ),
       child: Row(
@@ -3202,7 +3204,7 @@ class _ReportStatusNotice extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.16),
+              color: theme.colorScheme.primary.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(AppThemeTokens.smallRadius),
             ),
             child: Icon(icon, color: theme.colorScheme.primary),
@@ -3300,10 +3302,10 @@ class _PatientViewLockedCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppThemeTokens.cardPadding),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant,
+        color: theme.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(AppThemeTokens.cardRadius),
         border: Border.all(
-          color: theme.colorScheme.onSurface.withOpacity(0.04),
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.04),
         ),
       ),
       child: Column(
@@ -3317,11 +3319,12 @@ class _PatientViewLockedCard extends StatelessWidget {
           ),
           if (status == ConsultReportStatus.reportPendingReview &&
               onReview != null) ...[
-            SizedBox(height: AppThemeTokens.gap),
+            const SizedBox(height: AppThemeTokens.gap),
             FilledButton.tonalIcon(
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                backgroundColor: theme.colorScheme.primary.withOpacity(0.16),
+                backgroundColor:
+                    theme.colorScheme.primary.withValues(alpha: 0.16),
                 foregroundColor: theme.colorScheme.onSurface,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppThemeTokens.smallRadius),
@@ -3331,7 +3334,7 @@ class _PatientViewLockedCard extends StatelessWidget {
               icon: const Icon(Icons.visibility, size: 20),
               label: const Text('Doctor preview and sign'),
             ),
-            SizedBox(height: AppThemeTokens.gap / 2),
+            const SizedBox(height: AppThemeTokens.gap / 2),
             Text(
               'Open the AI Consent page to review and sign the report before sharing it with the patient.',
               style: theme.textTheme.bodySmall?.copyWith(
@@ -4268,10 +4271,11 @@ class _RiskAlertPageState extends State<RiskAlertPage> {
         _errorMessage = err.toString();
       });
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _isProcessing = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
     }
   }
 
@@ -4652,7 +4656,7 @@ class _OverallScore extends StatelessWidget {
             Text(
               generatedLabel,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
+                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
               ),
             ),
           ],
@@ -4737,7 +4741,7 @@ class _SegmentedBar extends StatelessWidget {
                     width: width * lowEnd,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.25),
+                      color: Colors.green.withValues(alpha: 0.25),
                       borderRadius: const BorderRadius.horizontal(
                         left: Radius.circular(4),
                       ),
@@ -4746,13 +4750,13 @@ class _SegmentedBar extends StatelessWidget {
                   Container(
                     width: width * (medEnd - lowEnd),
                     height: 8,
-                    color: Colors.orange.withOpacity(0.25),
+                    color: Colors.orange.withValues(alpha: 0.25),
                   ),
                   Expanded(
                     child: Container(
                       height: 8,
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.25),
+                        color: Colors.red.withValues(alpha: 0.25),
                         borderRadius: const BorderRadius.horizontal(
                           right: Radius.circular(4),
                         ),
@@ -4797,7 +4801,8 @@ class _ScanDetailsPanel extends StatelessWidget {
     final earned = details
         .where((d) => d.matched)
         .fold<int>(0, (sum, d) => sum + d.weight);
-    final inactiveColor = theme.colorScheme.onSurface.withOpacity(0.38);
+    final inactiveColor =
+        theme.colorScheme.onSurface.withValues(alpha: 0.38);
     return Card(
       margin: const EdgeInsets.only(top: 12),
       child: ExpansionTile(
@@ -4829,7 +4834,7 @@ class _ScanDetailsPanel extends StatelessWidget {
             child: Text(
               'Scoring scale: 0–39 Low • 40–69 Medium • 70–Max High',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
+                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
               ),
             ),
           ),

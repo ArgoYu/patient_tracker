@@ -20,7 +20,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
-import 'package:table_calendar/table_calendar.dart';
+import 'package:table_calendar/table_calendar.dart' hide isSameDay;
 import 'package:url_launcher/url_launcher.dart';
 
 import 'core/theme/app_theme.dart';

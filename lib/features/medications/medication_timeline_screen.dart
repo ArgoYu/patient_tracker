@@ -92,6 +92,12 @@ class _MedicationTimelineScreenState extends State<MedicationTimelineScreen> {
   List<RxCheckIn> _entriesFor(DateTime day) =>
       _entriesByDay[_dateOnly(day)] ?? <RxCheckIn>[];
 
+  bool get _isAllMedsScope {
+    if (widget.medicationId == 'all') return true;
+    final label = widget.medicationDisplayName ?? '';
+    return label.toLowerCase().contains('all');
+  }
+
   String _titleText() {
     final label = widget.medicationDisplayName ?? widget.medicationId;
     if (label.trim().isEmpty) {
@@ -363,6 +369,14 @@ class _MedicationTimelineScreenState extends State<MedicationTimelineScreen> {
                         color: scheme.onSurfaceVariant.withValues(alpha: 0.75),
                       ),
                 ),
+                if (_isAllMedsScope)
+                  Text(
+                    entry.medicationId,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color:
+                              scheme.onSurfaceVariant.withValues(alpha: 0.65),
+                        ),
+                  ),
               ],
             ),
           ),

@@ -490,11 +490,15 @@ class _RootShellState extends State<RootShell> {
           } else {
             final existing = meds[index];
             meds[index] = RxMedication(
+              id: existing.id,
               name: existing.name,
               dose: change.dose ?? existing.dose,
               effect: change.effect ?? existing.effect,
               sideEffects: change.sideEffects ?? existing.sideEffects,
               intakeLog: existing.intakeLog,
+              intakeLogs: existing.intakeLogs,
+              timesOfDay: existing.timesOfDay,
+              isActive: existing.isActive,
             );
           }
           break;
@@ -502,11 +506,15 @@ class _RootShellState extends State<RootShell> {
           if (index != -1) {
             final existing = meds[index];
             meds[index] = RxMedication(
+              id: existing.id,
               name: existing.name,
               dose: change.dose ?? existing.dose,
               effect: change.effect ?? existing.effect,
               sideEffects: change.sideEffects ?? existing.sideEffects,
               intakeLog: existing.intakeLog,
+              intakeLogs: existing.intakeLogs,
+              timesOfDay: existing.timesOfDay,
+              isActive: existing.isActive,
             );
           } else {
             meds.insert(0, buildMedicationFromChange(change));
@@ -536,12 +544,35 @@ class _RootShellState extends State<RootShell> {
     });
   }
 
-  void _logMedicationIntake(int medIndex, DateTime when) {
+  void _appendMedicationIntake(
+    int medIndex,
+    DateTime when, {
+    MedTimeSlot? slot,
+  }) {
     setState(() {
-      final log = meds[medIndex].intakeLog;
+      final med = meds[medIndex];
+      final log = med.intakeLog;
       log.add(when);
       log.sort((a, b) => b.compareTo(a));
+      med.intakeLogs.add(MedIntakeLog(
+        medId: med.id,
+        takenAt: when,
+        slot: slot,
+      ));
+      med.intakeLogs.sort((a, b) => b.takenAt.compareTo(a.takenAt));
     });
+  }
+
+  void _logMedicationIntake(int medIndex, DateTime when) {
+    _appendMedicationIntake(medIndex, when);
+  }
+
+  void _logMedicationIntakeWithSlot(
+    int medIndex,
+    DateTime when,
+    MedTimeSlot? slot,
+  ) {
+    _appendMedicationIntake(medIndex, when, slot: slot);
   }
 
   _CustomShortcutDefinition? get _activeShortcut {
@@ -933,8 +964,8 @@ class _RootShellState extends State<RootShell> {
     await _pushCurrent(
       RxSuggestionsPage(
         meds: meds,
-        onCheckIn: (index, when) {
-          _logMedicationIntake(index, when);
+        onCheckIn: (index, when, slot) {
+          _logMedicationIntakeWithSlot(index, when, slot);
           setState(() {});
         },
       ),
@@ -1376,6 +1407,7 @@ List<RxMedication> _buildDemoMeds() {
       dose: '50 mg · morning',
       effect: 'Helps balance serotonin to reduce anxiety and stabilize mood.',
       sideEffects: 'Mild nausea, vivid dreams during first week.',
+      timesOfDay: const [MedTimeSlot.morning],
       intakeLog: [
         DateTime.now().subtract(const Duration(days: 2, hours: 3)),
         DateTime.now().subtract(const Duration(days: 1, hours: 2)),
@@ -1386,6 +1418,7 @@ List<RxMedication> _buildDemoMeds() {
       dose: '25 mg · evening',
       effect: 'Supports sleep onset and reduces nighttime racing thoughts.',
       sideEffects: 'Possible morning grogginess; stay hydrated.',
+      timesOfDay: const [MedTimeSlot.evening],
       intakeLog: [
         DateTime.now().subtract(const Duration(days: 1, hours: 1)),
       ],
@@ -1395,6 +1428,7 @@ List<RxMedication> _buildDemoMeds() {
       dose: '20 mg · morning',
       effect: 'Supports steady mood and reduces anxious spirals.',
       sideEffects: 'Dry mouth or light nausea early on.',
+      timesOfDay: const [MedTimeSlot.morning],
       intakeLog: [
         DateTime.now().subtract(const Duration(days: 3, hours: 4)),
         DateTime.now().subtract(const Duration(days: 1, hours: 5)),
@@ -1405,6 +1439,7 @@ List<RxMedication> _buildDemoMeds() {
       dose: '10 mg · morning',
       effect: 'Helps with low mood and daily tension.',
       sideEffects: 'Headache or mild fatigue in the first week.',
+      timesOfDay: const [MedTimeSlot.morning],
       intakeLog: [
         DateTime.now().subtract(const Duration(days: 2, hours: 6)),
       ],
@@ -1414,6 +1449,7 @@ List<RxMedication> _buildDemoMeds() {
       dose: '150 mg · morning',
       effect: 'Boosts energy and focus during the day.',
       sideEffects: 'Dry mouth or light jitteriness.',
+      timesOfDay: const [MedTimeSlot.morning],
       intakeLog: [
         DateTime.now().subtract(const Duration(days: 1, hours: 4)),
       ],
@@ -1423,6 +1459,7 @@ List<RxMedication> _buildDemoMeds() {
       dose: '10 mg · noon',
       effect: 'Takes the edge off daytime anxiety.',
       sideEffects: 'Light dizziness or upset stomach.',
+      timesOfDay: const [MedTimeSlot.noon],
       intakeLog: [
         DateTime.now().subtract(const Duration(days: 2, hours: 1)),
       ],
@@ -1432,6 +1469,7 @@ List<RxMedication> _buildDemoMeds() {
       dose: '100 mg · evening',
       effect: 'Supports mood stability and reduces swings.',
       sideEffects: 'Possible rash or skin sensitivity.',
+      timesOfDay: const [MedTimeSlot.evening],
       intakeLog: [
         DateTime.now().subtract(const Duration(days: 1, hours: 2)),
       ],
@@ -1441,6 +1479,7 @@ List<RxMedication> _buildDemoMeds() {
       dose: '50 mg · bedtime',
       effect: 'Helps with sleep onset on restless nights.',
       sideEffects: 'Next-day grogginess or dry mouth.',
+      timesOfDay: const [MedTimeSlot.bedtime],
       intakeLog: [
         DateTime.now().subtract(const Duration(days: 1, hours: 7)),
       ],
@@ -1450,6 +1489,7 @@ List<RxMedication> _buildDemoMeds() {
       dose: '25 mg · bedtime / as needed',
       effect: 'Calms acute anxiety and supports sleep when needed.',
       sideEffects: 'Drowsiness or dry mouth.',
+      timesOfDay: const [MedTimeSlot.bedtime],
       intakeLog: [
         DateTime.now().subtract(const Duration(days: 4, hours: 2)),
       ],
@@ -1459,6 +1499,7 @@ List<RxMedication> _buildDemoMeds() {
       dose: '10 mg · as needed',
       effect: 'Reduces physical symptoms of stress during spikes.',
       sideEffects: 'Cool hands or mild fatigue.',
+      timesOfDay: const [MedTimeSlot.afternoon],
       intakeLog: [
         DateTime.now().subtract(const Duration(days: 3, hours: 6)),
       ],

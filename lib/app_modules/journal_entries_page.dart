@@ -307,12 +307,14 @@ class _JournalEntrySheetState extends State<_JournalEntrySheet> {
 class JournalEntriesPage extends StatefulWidget {
   const JournalEntriesPage({
     super.key,
-    required this.medication,
+    this.medication,
+    this.medications = const <RxMedication>[],
     required this.entries,
     required this.onEntriesChanged,
   });
 
-  final RxMedication medication;
+  final RxMedication? medication;
+  final List<RxMedication> medications;
   final List<JournalEntry> entries;
   final Future<void> Function(List<JournalEntry> entries) onEntriesChanged;
 
@@ -329,12 +331,24 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
     _entries = List<JournalEntry>.from(widget.entries);
   }
 
-  List<JournalEntry> _entriesForMedication() {
-    final filtered = _entries
-        .where((entry) => entry.medicationId == widget.medication.name)
-        .toList();
+  bool get _isGlobalScope => widget.medication == null;
+
+  List<JournalEntry> _entriesForScope() {
+    final filtered = _isGlobalScope
+        ? List<JournalEntry>.from(_entries)
+        : _entries
+            .where((entry) => entry.medicationId == widget.medication!.name)
+            .toList();
     filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return filtered;
+  }
+
+  RxMedication? _resolveMedication(JournalEntry entry) {
+    if (widget.medication != null) return widget.medication;
+    for (final med in widget.medications) {
+      if (med.name == entry.medicationId) return med;
+    }
+    return null;
   }
 
   Future<void> _applyEntries(List<JournalEntry> updated) async {
@@ -345,9 +359,14 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
   }
 
   Future<void> _editEntry(JournalEntry entry) async {
+    final medication = _resolveMedication(entry);
+    if (medication == null) {
+      showToast(context, 'Medication not found for this entry.');
+      return;
+    }
     final updated = await showJournalEntrySheet(
       context,
-      medication: widget.medication,
+      medication: medication,
       existing: entry,
     );
     if (updated == null) return;
@@ -406,6 +425,8 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
   Widget _buildEntryCard(BuildContext context, JournalEntry entry) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final medicationLabel =
+        _isGlobalScope ? entry.medicationId : widget.medication!.name;
     return InkWell(
       onTap: () => _editEntry(entry),
       borderRadius: BorderRadius.circular(16),
@@ -436,6 +457,16 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                 ),
               ],
             ),
+            if (_isGlobalScope)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  medicationLabel,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.75),
+                  ),
+                ),
+              ),
             if (entry.tags.isNotEmpty)
               Text(
                 'Tags: ${entry.tags.map(_tagLabel).join(', ')}',
@@ -471,7 +502,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
 
   @override
   Widget build(BuildContext context) {
-    final entries = _entriesForMedication();
+    final entries = _entriesForScope();
     final grouped = <DateTime, List<JournalEntry>>{};
     for (final entry in entries) {
       final day = DateUtils.dateOnly(entry.createdAt);
@@ -482,7 +513,11 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Journal – ${widget.medication.name}'),
+        title: Text(
+          _isGlobalScope
+              ? 'Journal - All medications'
+              : 'Journal - ${widget.medication!.name}',
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -506,7 +541,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Tap Journal from the Rx card to add one.',
+                      'Tap Journal to add one.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Theme.of(context)
                                 .colorScheme
