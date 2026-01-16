@@ -1404,7 +1404,7 @@ List<RxMedication> _buildDemoMeds() {
   return [
     RxMedication(
       name: 'Sertraline',
-      dose: '50 mg · morning',
+      dose: '50 mg - morning',
       effect: 'Helps balance serotonin to reduce anxiety and stabilize mood.',
       sideEffects: 'Mild nausea, vivid dreams during first week.',
       timesOfDay: const [MedTimeSlot.morning],
@@ -1415,7 +1415,7 @@ List<RxMedication> _buildDemoMeds() {
     ),
     RxMedication(
       name: 'Quetiapine',
-      dose: '25 mg · evening',
+      dose: '25 mg - evening',
       effect: 'Supports sleep onset and reduces nighttime racing thoughts.',
       sideEffects: 'Possible morning grogginess; stay hydrated.',
       timesOfDay: const [MedTimeSlot.evening],
@@ -1425,7 +1425,7 @@ List<RxMedication> _buildDemoMeds() {
     ),
     RxMedication(
       name: 'Fluoxetine',
-      dose: '20 mg · morning',
+      dose: '20 mg - morning',
       effect: 'Supports steady mood and reduces anxious spirals.',
       sideEffects: 'Dry mouth or light nausea early on.',
       timesOfDay: const [MedTimeSlot.morning],
@@ -1436,7 +1436,7 @@ List<RxMedication> _buildDemoMeds() {
     ),
     RxMedication(
       name: 'Escitalopram',
-      dose: '10 mg · morning',
+      dose: '10 mg - morning',
       effect: 'Helps with low mood and daily tension.',
       sideEffects: 'Headache or mild fatigue in the first week.',
       timesOfDay: const [MedTimeSlot.morning],
@@ -1446,7 +1446,7 @@ List<RxMedication> _buildDemoMeds() {
     ),
     RxMedication(
       name: 'Bupropion XL',
-      dose: '150 mg · morning',
+      dose: '150 mg - morning',
       effect: 'Boosts energy and focus during the day.',
       sideEffects: 'Dry mouth or light jitteriness.',
       timesOfDay: const [MedTimeSlot.morning],
@@ -1456,7 +1456,7 @@ List<RxMedication> _buildDemoMeds() {
     ),
     RxMedication(
       name: 'Buspirone',
-      dose: '10 mg · noon',
+      dose: '10 mg - noon',
       effect: 'Takes the edge off daytime anxiety.',
       sideEffects: 'Light dizziness or upset stomach.',
       timesOfDay: const [MedTimeSlot.noon],
@@ -1466,7 +1466,7 @@ List<RxMedication> _buildDemoMeds() {
     ),
     RxMedication(
       name: 'Lamotrigine',
-      dose: '100 mg · evening',
+      dose: '100 mg - evening',
       effect: 'Supports mood stability and reduces swings.',
       sideEffects: 'Possible rash or skin sensitivity.',
       timesOfDay: const [MedTimeSlot.evening],
@@ -1476,7 +1476,7 @@ List<RxMedication> _buildDemoMeds() {
     ),
     RxMedication(
       name: 'Trazodone',
-      dose: '50 mg · bedtime',
+      dose: '50 mg - bedtime',
       effect: 'Helps with sleep onset on restless nights.',
       sideEffects: 'Next-day grogginess or dry mouth.',
       timesOfDay: const [MedTimeSlot.bedtime],
@@ -1486,7 +1486,7 @@ List<RxMedication> _buildDemoMeds() {
     ),
     RxMedication(
       name: 'Hydroxyzine',
-      dose: '25 mg · bedtime / as needed',
+      dose: '25 mg - bedtime / as needed',
       effect: 'Calms acute anxiety and supports sleep when needed.',
       sideEffects: 'Drowsiness or dry mouth.',
       timesOfDay: const [MedTimeSlot.bedtime],
@@ -1496,7 +1496,7 @@ List<RxMedication> _buildDemoMeds() {
     ),
     RxMedication(
       name: 'Propranolol',
-      dose: '10 mg · as needed',
+      dose: '10 mg - as needed',
       effect: 'Reduces physical symptoms of stress during spikes.',
       sideEffects: 'Cool hands or mild fatigue.',
       timesOfDay: const [MedTimeSlot.afternoon],

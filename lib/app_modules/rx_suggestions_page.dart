@@ -222,15 +222,35 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
         elevation: 0,
       );
 
-  String _statusText(List<DateTime> logs) {
-    if (logs.isEmpty) return 'Not checked in yet';
-    final last = logs.first;
+  String _formatLastTaken(DateTime last, {bool includeTimeForToday = false}) {
     final now = DateTime.now();
-    if (isSameDay(last, now)) return 'Taken today';
+    if (isSameDay(last, now)) {
+      return includeTimeForToday
+          ? 'Taken today ${formatTime(last)}'
+          : 'Taken today';
+    }
     if (isSameDay(last, now.subtract(const Duration(days: 1)))) {
       return 'Last taken yesterday';
     }
-    return 'Last taken ${formatDate(last)}';
+    final days = now.difference(last).inDays;
+    if (days > 0) {
+      return 'Last taken ${days}d';
+    }
+    return includeTimeForToday
+        ? 'Taken today ${formatTime(last)}'
+        : 'Taken today';
+  }
+
+  String _asciiDose(String dose) => dose
+      .replaceAll('\u00B7', '-')
+      .replaceAll('\u2022', '-')
+      .replaceAll('\u2013', '-')
+      .replaceAll('\u2014', '-');
+
+  String _statusText(List<DateTime> logs) {
+    if (logs.isEmpty) return 'Not checked in yet';
+    final last = logs.first;
+    return _formatLastTaken(last);
   }
 
   _MedDoseProgress _doseProgressForMed(RxMedication med) {
@@ -302,10 +322,10 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
           );
 
   String _medSubtitle(RxMedication med) {
-    if (med.intakeLog.isEmpty) return med.dose;
+    if (med.intakeLog.isEmpty) return _asciiDose(med.dose);
     final last = List<DateTime>.from(med.intakeLog)
       ..sort((a, b) => b.compareTo(a));
-    return 'Last taken ${formatTime(last.first)}';
+    return _formatLastTaken(last.first, includeTimeForToday: true);
   }
 
   void _showMedMultiSelectSheet({
@@ -723,6 +743,7 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
           final reminder = _reminderTimes[medIndex];
           final scheduled = _scheduledFire[medIndex];
           final statusText = _statusText(logs);
+          final doseLabel = _asciiDose(med.dose);
           final isExpanded = _expandedIndex == medIndex;
           final doseProgress = _doseProgressForMed(med);
           return RxMedExpandableCard(
@@ -732,6 +753,7 @@ class _RxSuggestionsPageState extends State<RxSuggestionsPage> {
             isPartial: doseProgress.isPartial,
             partialLabel: doseProgress.label,
             statusText: statusText,
+            doseLabel: doseLabel,
             reminder: reminder,
             scheduled: scheduled,
             secondaryTextStyle: _secondaryText(context),
@@ -760,6 +782,7 @@ class RxMedExpandableCard extends StatelessWidget {
     required this.isPartial,
     required this.partialLabel,
     required this.statusText,
+    required this.doseLabel,
     required this.reminder,
     required this.scheduled,
     required this.secondaryTextStyle,
@@ -774,6 +797,7 @@ class RxMedExpandableCard extends StatelessWidget {
   final bool isPartial;
   final String? partialLabel;
   final String statusText;
+  final String doseLabel;
   final TimeOfDay? reminder;
   final DateTime? scheduled;
   final TextStyle? secondaryTextStyle;
@@ -822,7 +846,7 @@ class RxMedExpandableCard extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  '$statusText бд ${med.dose}',
+                                  '$statusText - $doseLabel',
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     fontWeight: FontWeight.w500,
                                     color: theme.colorScheme.onSurface
